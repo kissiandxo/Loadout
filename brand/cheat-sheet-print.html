@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Loadout · Prompt Cheat Sheet</title>
+<style>
+  /* Print-to-PDF settings: A4, dark theme reverses for print, sized for paper.
+     Open this file in Chrome → Cmd/Ctrl + P → "Save as PDF" → A4 portrait, no margins. */
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+               background: #0A0A0B; color: #F4F4F5; }
+  .page { width: 210mm; height: 297mm; padding: 18mm 18mm 16mm; page-break-after: always;
+          background: linear-gradient(135deg, #0A0A0B 0%, #131319 100%); position: relative; overflow: hidden; }
+  .page:last-child { page-break-after: auto; }
+
+  .grid-bg { position: absolute; inset: 0; opacity: 0.04; pointer-events: none; }
+  .grid-bg::before { content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(to right, #4F8BFF 1px, transparent 1px),
+                      linear-gradient(to bottom, #4F8BFF 1px, transparent 1px);
+    background-size: 24px 24px; }
+
+  .glow { position: absolute; width: 320px; height: 320px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(79,139,255,0.18) 0%, rgba(79,139,255,0) 70%);
+          top: -100px; right: -100px; pointer-events: none; }
+
+  /* Header */
+  .head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14mm; position: relative; z-index: 2; }
+  .brand { font-weight: 900; font-size: 28px; letter-spacing: -1px; }
+  .brand .dot { color: #4F8BFF; }
+  .head .meta { font-size: 11px; color: #A1A1AA; letter-spacing: 1px; text-transform: uppercase; }
+
+  h1 { font-size: 48px; font-weight: 900; letter-spacing: -2px; line-height: 1; margin: 0 0 6px; }
+  h1 .accent { color: #4F8BFF; }
+  .sub { font-size: 14px; color: #A1A1AA; margin: 0 0 12mm; max-width: 130mm; line-height: 1.5; }
+
+  .pill { display: inline-block; padding: 4px 12px; font-size: 10px; font-weight: 600;
+          letter-spacing: 1px; text-transform: uppercase; border-radius: 100px;
+          background: rgba(79,139,255,0.12); color: #4F8BFF; border: 1px solid rgba(79,139,255,0.3); margin-bottom: 10mm; }
+
+  /* Agent table */
+  .agents { width: 100%; border-collapse: collapse; font-size: 11px; position: relative; z-index: 2; }
+  .agents th { text-align: left; padding: 7px 10px; font-size: 9px; font-weight: 700; color: #71717A;
+               letter-spacing: 1.5px; text-transform: uppercase; border-bottom: 1px solid #27272A; }
+  .agents td { padding: 9px 10px; border-bottom: 1px solid #1F1F25; vertical-align: top; line-height: 1.45; }
+  .agents td.cmd { font-family: 'JetBrains Mono', 'Courier New', monospace; color: #4F8BFF;
+                   font-weight: 600; white-space: nowrap; }
+  .agents td.name { font-weight: 600; color: #F4F4F5; }
+  .agents td.desc { color: #A1A1AA; }
+
+  /* Footer */
+  .foot { position: absolute; bottom: 8mm; left: 18mm; right: 18mm; display: flex;
+          justify-content: space-between; align-items: center; font-size: 9px; color: #52525B; }
+
+  /* Section heading */
+  .section-head { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; margin: 0 0 4mm; color: #F4F4F5; }
+  .section-sub { font-size: 11px; color: #A1A1AA; margin: 0 0 8mm; line-height: 1.5; }
+
+  /* Two-column patterns block */
+  .patterns { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin-top: 6mm; position: relative; z-index: 2; }
+  .pattern-card { background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 10px 12px; }
+  .pattern-card h3 { margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #F4F4F5; }
+  .pattern-card p { margin: 0; font-size: 10px; color: #A1A1AA; line-height: 1.5; }
+
+  .prompt-block { background: #14141A; border-left: 3px solid #4F8BFF; padding: 8px 12px;
+                  font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 10px;
+                  color: #F4F4F5; margin: 3mm 0; border-radius: 0 6px 6px 0; line-height: 1.6; }
+
+  .agent-detail { margin-bottom: 9mm; position: relative; z-index: 2; }
+  .agent-detail .hdr { display: flex; align-items: center; gap: 10px; margin-bottom: 3mm; }
+  .agent-detail .num { background: #4F8BFF; color: #0A0A0B; font-weight: 900; font-size: 10px;
+                       width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+  .agent-detail .ttl { font-weight: 700; font-size: 13px; }
+  .agent-detail .cmd { font-family: 'JetBrains Mono', monospace; color: #4F8BFF; font-size: 11px; font-weight: 600; }
+  .agent-detail .inputs { font-size: 9px; color: #71717A; margin-top: 3px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1 — Sales Loadout cover -->
+<div class="page">
+  <div class="grid-bg"></div>
+  <div class="glow"></div>
+
+  <div class="head">
+    <div class="brand">Loadout<span class="dot">.</span></div>
+    <div class="meta">Sales Loadout · Cheat Sheet v1</div>
+  </div>
+
+  <span class="pill">12 AI sales staff · pre-built</span>
+
+  <h1>The Sales <span class="accent">Loadout</span>.</h1>
+  <h1 style="font-size: 28px; margin-top: 4mm;">Prompt Cheat Sheet</h1>
+  <p class="sub">The trigger phrase + best prompt template for each of the 12 sales agents. Keep this open in a tab — or print it and pin it next to your screen.</p>
+
+  <table class="agents">
+    <thead>
+      <tr><th style="width: 12mm;">#</th><th style="width: 50mm;">Agent</th><th style="width: 32mm;">Slash command</th><th>What it does</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">01</td><td class="name">Follow-Up Sequence</td><td class="cmd">/follow-up</td><td class="desc">5-touch follow-up plan for a quiet deal</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">02</td><td class="name">No-Show Recovery</td><td class="cmd">/recover</td><td class="desc">3-touch sequence for missed appointments</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">03</td><td class="name">Sales Email Generator</td><td class="cmd">/email</td><td class="desc">One polished sales email — quote, trade-in, thank-you</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">04</td><td class="name">Objection Handler</td><td class="cmd">/objection</td><td class="desc">3 framings + next step for any objection</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">05</td><td class="name">Objection Prep</td><td class="cmd">/prep</td><td class="desc">Predict top 5 objections before a meeting</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">06</td><td class="name">Negotiation Coach</td><td class="cmd">/negotiate</td><td class="desc">Tactical move-by-move negotiation map</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">07</td><td class="name">Pipeline Review</td><td class="cmd">/pipeline</td><td class="desc">Strategic read — which deals close, which die</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">08</td><td class="name">Priority List</td><td class="cmd">/priorities</td><td class="desc">Daily / weekly tactical action list</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">09</td><td class="name">Proposal Builder</td><td class="cmd">/proposal</td><td class="desc">Professional 1–2 page sales proposal</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">10</td><td class="name">Customer Recap</td><td class="cmd">/recap</td><td class="desc">Post-meeting structured capture + next steps</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">11</td><td class="name">Cold Outreach</td><td class="cmd">/cold</td><td class="desc">One sharp cold message — email / SMS / LinkedIn</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">12</td><td class="name">Test Drive Follow-Up</td><td class="cmd">/test-drive</td><td class="desc">The 48-hour post-test-drive message</td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot">
+    <div>Loadout · yourloadout.com</div>
+    <div>Page 1 of 4</div>
+  </div>
+</div>
+
+<!-- PAGE 2 — Sales prompt templates -->
+<div class="page">
+  <div class="grid-bg"></div>
+  <div class="head">
+    <div class="brand">Loadout<span class="dot">.</span></div>
+    <div class="meta">Sales · Prompt Templates</div>
+  </div>
+
+  <div class="section-head">Best prompt template — per agent</div>
+  <div class="section-sub">Copy, paste, fill the bracketed fields. The closer you stick to the structure, the sharper the output.</div>
+
+  <div class="agent-detail">
+    <div class="hdr"><div class="num">01</div><div class="ttl">Follow-Up Sequence</div><div class="cmd">/follow-up</div></div>
+    <div class="prompt-block">Need a follow-up sequence for [Customer]. They [last event] on [day], [days] ago. Vehicle/product: [details]. Last channel: [email/SMS/phone]. I'm [Your name].</div>
+  </div>
+
+  <div class="agent-detail">
+    <div class="hdr"><div class="num">04</div><div class="ttl">Objection Handler</div><div class="cmd">/objection</div></div>
+    <div class="prompt-block">Customer just said: "[exact quote]". Deal stage: [where we're at]. Customer type: [first-time / haggler / fleet / etc.]. Three framings please.</div>
+  </div>
+
+  <div class="agent-detail">
+    <div class="hdr"><div class="num">06</div><div class="ttl">Negotiation Coach</div><div class="cmd">/negotiate</div></div>
+    <div class="prompt-block">Negotiation map for [Customer]. Vehicle/product: [details]. Current state: I'm at $[X], they want $[Y], gap of $[Z]. Already offered: [what]. I can authorise up to [$N] on accessories. Time pressure: [deadline]. I'm [Your name].</div>
+  </div>
+
+  <div class="agent-detail">
+    <div class="hdr"><div class="num">07</div><div class="ttl">Pipeline Review</div><div class="cmd">/pipeline</div></div>
+    <div class="prompt-block">Pipeline review please. Open deals: [paragraph dump — name + product + stage + days quiet per deal]. Today is [day]. End of month is [N days] away. I'm [Your name].</div>
+  </div>
+
+  <div class="agent-detail">
+    <div class="hdr"><div class="num">09</div><div class="ttl">Proposal Builder</div><div class="cmd">/proposal</div></div>
+    <div class="prompt-block">Proposal for [Customer]. Product: [spec]. Drive-away: $[X]. Trade-in: [details] at $[Y]. Inclusions: [list]. Finance: [status]. Validity: [N] days. Delivery: [when]. I'm [Your name] at [Business].</div>
+  </div>
+
+  <div class="agent-detail">
+    <div class="hdr"><div class="num">12</div><div class="ttl">Test Drive Follow-Up</div><div class="cmd">/test-drive</div></div>
+    <div class="prompt-block">[Customer] test-drove the [vehicle] [when]. They reacted to: [specific thing]. Concerns raised: [what]. Discussed next steps: [what they said]. I'm [Your name]. Send via [SMS / email].</div>
+  </div>
+
+  <div class="foot">
+    <div>Loadout · yourloadout.com</div>
+    <div>Page 2 of 4</div>
+  </div>
+</div>
+
+<!-- PAGE 3 — Customer Engagement cover -->
+<div class="page">
+  <div class="grid-bg"></div>
+  <div class="glow"></div>
+
+  <div class="head">
+    <div class="brand">Loadout<span class="dot">.</span></div>
+    <div class="meta">Customer Engagement · Cheat Sheet v1</div>
+  </div>
+
+  <span class="pill">12 AI staff · plus owned chatbot</span>
+
+  <h1>Customer <span class="accent">Engagement</span>.</h1>
+  <h1 style="font-size: 28px; margin-top: 4mm;">Prompt Cheat Sheet</h1>
+  <p class="sub">The trigger phrase + best prompt template for each of the 12 customer engagement agents. The headline — Website Chatbot Builder — replaces Chatbase, Tidio, Intercom Fin.</p>
+
+  <table class="agents">
+    <thead>
+      <tr><th style="width: 12mm;">#</th><th style="width: 50mm;">Agent</th><th style="width: 32mm;">Slash command</th><th>What it does</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background: rgba(79,139,255,0.04);"><td class="cmd" style="font-weight: 700; color: #4F8BFF;">01</td><td class="name" style="color: #F4F4F5;">Website Chatbot Builder ★</td><td class="cmd">/chatbot</td><td class="desc" style="color: #F4F4F5;">Complete chatbot stack: prompt + widget + proxy</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">02</td><td class="name">Support Ticket Router</td><td class="cmd">/triage</td><td class="desc">Classify, prioritise, route, draft acknowledgement</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">03</td><td class="name">FAQ Agent</td><td class="cmd">/faq</td><td class="desc">Answer OR maintain the FAQ knowledge base</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">04</td><td class="name">Review Response Generator</td><td class="cmd">/review</td><td class="desc">Public-facing replies — Google, Trustpilot, Yelp, App Store</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">05</td><td class="name">Complaint Handler</td><td class="cmd">/complaint</td><td class="desc">Defuse angry customers without being subservient</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">06</td><td class="name">Refund / Return Negotiator</td><td class="cmd">/refund</td><td class="desc">Evaluate + respond to refund requests</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">07</td><td class="name">NPS / CSAT Follow-Up</td><td class="cmd">/nps</td><td class="desc">Tuned follow-ups by segment — Promoter / Passive / Detractor</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">08</td><td class="name">Onboarding Sequencer</td><td class="cmd">/onboard</td><td class="desc">5–7 touchpoint onboarding sequence</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">09</td><td class="name">Win-Back Campaign</td><td class="cmd">/winback</td><td class="desc">Re-engage churned customers by archetype</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">10</td><td class="name">VIP Customer Manager</td><td class="cmd">/vip</td><td class="desc">Personal outreach — revenue / referral / strategic</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">11</td><td class="name">Cancellation Save</td><td class="cmd">/save</td><td class="desc">Handle in-the-act-of-leaving with ONE good offer</td></tr>
+      <tr><td class="cmd" style="font-weight: 700; color: #71717A;">12</td><td class="name">Knowledge Base Builder</td><td class="cmd">/kb</td><td class="desc">Structure or write KB articles by reader intent</td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot">
+    <div>Loadout · yourloadout.com</div>
+    <div>Page 3 of 4</div>
+  </div>
+</div>
+
+<!-- PAGE 4 — Customer Engagement prompts + universal patterns -->
+<div class="page">
+  <div class="grid-bg"></div>
+  <div class="head">
+    <div class="brand">Loadout<span class="dot">.</span></div>
+    <div class="meta">Engagement · Prompts + Patterns</div>
+  </div>
+
+  <div class="section-head">Best prompt template — per agent</div>
+
+  <div class="agent-detail">
+    <div class="hdr"><div class="num" style="background: linear-gradient(135deg, #4F8BFF, #2563EB); color: #F4F4F5;">01</div><div class="ttl">Website Chatbot Builder</div><div class="cmd">/chatbot</div></div>
+    <div class="prompt-block">Build me a chatbot. Business: [name + one-line]. Site: [URL]. Purpose: [support / lead capture / FAQ]. Tone: [warm / professional]. Escalation email: [where]. Anthropic API key: yes. Top FAQs: [paste]. Off-limits: [topics]. Brand colours: [hex]. Hosting: [Cloudflare / Vercel].</div>
+  </div>
+
+  <div class="agent-detail">
+    <div class="hdr"><div class="num">02</div><div class="ttl">Support Ticket Router</div><div class="cmd">/triage</div></div>
+    <div class="prompt-block">Triage this ticket. Came in [time/channel]. From [customer + status]. [Paste verbatim content]. Available queues: [list]. SLA: [24h / etc].</div>
+  </div>
+
+  <div class="agent-detail">
+    <div class="hdr"><div class="num">05</div><div class="ttl">Complaint Handler</div><div class="cmd">/complaint</div></div>
+    <div class="prompt-block">Complaint. Customer: [name + LTV]. Channel: [email]. They wrote: "[verbatim]". What actually happened: [back-story]. Limit: [full refund / partial / nothing]. I'm [Your name].</div>
+  </div>
+
+  <div class="agent-detail">
+    <div class="hdr"><div class="num">11</div><div class="ttl">Cancellation Save</div><div class="cmd">/save</div></div>
+    <div class="prompt-block">Cancellation save. Customer: [name + tenure + plan + LTV]. Their reason: "[verbatim]". Usage: [heavy / declining]. Can offer: [pause / downgrade / nothing]. Channel: [chat / email]. I'm [Your name].</div>
+  </div>
+
+  <div class="section-head" style="margin-top: 8mm;">Universal patterns</div>
+  <div class="patterns">
+    <div class="pattern-card">
+      <h3>Drop in the tone framework</h3>
+      <p>Paste your Tone Framework (Formality 1–5, Warmth 1–5, Authority 1–5, Directness 1–5) at the top of every project so output is calibrated to your voice.</p>
+    </div>
+    <div class="pattern-card">
+      <h3>Pair agents with plugins</h3>
+      <p>Complaint Handler + Escalation Matrix · Cancellation Save + Churn Signals · Review Generator + Review Handling Playbook.</p>
+    </div>
+    <div class="pattern-card">
+      <h3>Customer context first</h3>
+      <p>Always lead the prompt with WHO the customer is. Generic prompts produce generic output.</p>
+    </div>
+    <div class="pattern-card">
+      <h3>Iterate, don't restart</h3>
+      <p>If output isn't right: "shorter", "less formal", "more direct", "drop the discount offer". Next iteration is usually right.</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div>Loadout · yourloadout.com · ★ headline differentiator</div>
+    <div>Page 4 of 4</div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <!-- Gumroad cover — The Customer Engagement Loadout. 1280x720 16:9 -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A0A0B"/>
+      <stop offset="100%" stop-color="#15151A"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F8BFF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#4F8BFF" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#4F8BFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1280" height="720" fill="url(#bgGrad)"/>
+  <circle cx="230" cy="560" r="320" fill="url(#glowGrad)"/>
+
+  <g stroke="#4F8BFF" stroke-width="1" opacity="0.04">
+    <line x1="0" y1="120" x2="1280" y2="120"/>
+    <line x1="0" y1="240" x2="1280" y2="240"/>
+    <line x1="0" y1="360" x2="1280" y2="360"/>
+    <line x1="0" y1="480" x2="1280" y2="480"/>
+    <line x1="0" y1="600" x2="1280" y2="600"/>
+  </g>
+
+  <!-- Loadout wordmark (top-left) -->
+  <text x="80" y="100" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="900" font-size="36" letter-spacing="-1" fill="#F4F4F5">Loadout</text>
+  <circle cx="248" cy="92" r="5" fill="url(#accentGrad)"/>
+
+  <!-- Eyebrow pill -->
+  <g transform="translate(80, 150)">
+    <rect x="0" y="0" width="340" height="36" rx="18" fill="#4F8BFF" fill-opacity="0.12" stroke="#4F8BFF" stroke-opacity="0.35" stroke-width="1"/>
+    <circle cx="20" cy="18" r="4" fill="#4F8BFF"/>
+    <text x="34" y="24" font-family="Inter, sans-serif" font-weight="600" font-size="13" letter-spacing="1" fill="#4F8BFF">OWN YOUR CHATBOT · DON'T RENT IT</text>
+  </g>
+
+  <!-- Main headline -->
+  <text x="80" y="290" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="900" font-size="92" letter-spacing="-3" fill="#F4F4F5">12 AI staff.</text>
+  <text x="80" y="385" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="900" font-size="92" letter-spacing="-3" fill="#4F8BFF">Plus your chatbot.</text>
+
+  <!-- Subline -->
+  <text x="80" y="450" font-family="Inter, sans-serif" font-weight="400" font-size="22" fill="#A1A1AA">Replace Chatbase, Tidio, Intercom Fin.</text>
+  <text x="80" y="482" font-family="Inter, sans-serif" font-weight="400" font-size="22" fill="#A1A1AA">Own the stack. Pay once. ~$1 per 1,000 messages thereafter.</text>
+
+  <!-- Agent grid -->
+  <g transform="translate(80, 540)" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="13" font-weight="500" fill="#A1A1AA">
+    <!-- Row 1 -->
+    <rect x="0" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#4F8BFF" stroke-width="1.5"/>
+    <text x="14" y="23" fill="#F4F4F5">/chatbot</text>
+
+    <rect x="190" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+    <text x="204" y="23">/triage</text>
+
+    <rect x="380" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+    <text x="394" y="23">/faq</text>
+
+    <rect x="570" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+    <text x="584" y="23">/review</text>
+
+    <rect x="760" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+    <text x="774" y="23">/complaint</text>
+
+    <rect x="950" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+    <text x="964" y="23">/refund</text>
+
+    <!-- Row 2 -->
+    <rect x="0" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+    <text x="14" y="71">/nps</text>
+
+    <rect x="190" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+    <text x="204" y="71">/onboard</text>
+
+    <rect x="380" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+    <text x="394" y="71">/winback</text>
+
+    <rect x="570" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+    <text x="584" y="71">/vip</text>
+
+    <rect x="760" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+    <text x="774" y="71">/save</text>
+
+    <rect x="950" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+    <text x="964" y="71">/kb</text>
+  </g>
+
+  <!-- Price tag -->
+  <g transform="translate(1080, 60)">
+    <rect x="0" y="0" width="140" height="64" rx="10" fill="#1A1A20" stroke="#4F8BFF" stroke-width="1.5"/>
+    <text x="70" y="36" font-family="Inter, sans-serif" font-weight="900" font-size="32" fill="#F4F4F5" text-anchor="middle">$97</text>
+    <text x="70" y="54" font-family="Inter, sans-serif" font-weight="500" font-size="10" letter-spacing="1.5" fill="#A1A1AA" text-anchor="middle">ONE-TIME</text>
+  </g>
+</svg>

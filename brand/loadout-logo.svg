@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" width="720" height="200">
+  <!-- Loadout — dark luxury tech wordmark.
+       Black bg with electric blue accent dot.
+       Designed for dark backgrounds. Light variant below. -->
+  <defs>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F8BFF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background (transparent — caller controls bg) -->
+  <rect width="720" height="200" fill="#0A0A0B"/>
+
+  <!-- Wordmark "Loadout" — tight kerning, heavy weight -->
+  <text x="60" y="125"
+        font-family="'Inter', 'Helvetica Neue', -apple-system, BlinkMacSystemFont, sans-serif"
+        font-weight="900"
+        font-size="92"
+        letter-spacing="-3"
+        fill="#F4F4F5">Loadout</text>
+
+  <!-- Accent dot — the "fully installed" signal -->
+  <circle cx="555" cy="116" r="11" fill="url(#accentGrad)"/>
+
+  <!-- Subtle bar underneath suggesting an installed line/grid -->
+  <rect x="60" y="148" width="495" height="2" fill="#4F8BFF" opacity="0.18"/>
+</svg>

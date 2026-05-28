@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <!-- Gumroad cover — The Sales Loadout. 1280x720 16:9 -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A0A0B"/>
+      <stop offset="100%" stop-color="#15151A"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F8BFF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#4F8BFF" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#4F8BFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="720" fill="url(#bgGrad)"/>
+
+  <!-- Ambient glow -->
+  <circle cx="1050" cy="160" r="320" fill="url(#glowGrad)"/>
+
+  <!-- Subtle grid -->
+  <g stroke="#4F8BFF" stroke-width="1" opacity="0.04">
+    <line x1="0" y1="120" x2="1280" y2="120"/>
+    <line x1="0" y1="240" x2="1280" y2="240"/>
+    <line x1="0" y1="360" x2="1280" y2="360"/>
+    <line x1="0" y1="480" x2="1280" y2="480"/>
+    <line x1="0" y1="600" x2="1280" y2="600"/>
+  </g>
+
+  <!-- Loadout wordmark (top-left) -->
+  <text x="80" y="100"
+        font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+        font-weight="900"
+        font-size="36"
+        letter-spacing="-1"
+        fill="#F4F4F5">Loadout</text>
+  <circle cx="248" cy="92" r="5" fill="url(#accentGrad)"/>
+
+  <!-- Eyebrow pill -->
+  <g transform="translate(80, 150)">
+    <rect x="0" y="0" width="220" height="36" rx="18" fill="#4F8BFF" fill-opacity="0.12" stroke="#4F8BFF" stroke-opacity="0.35" stroke-width="1"/>
+    <circle cx="20" cy="18" r="4" fill="#4F8BFF"/>
+    <text x="34" y="24"
+          font-family="Inter, sans-serif"
+          font-weight="600"
+          font-size="13"
+          letter-spacing="1"
+          fill="#4F8BFF">AI SALES STAFF · PRE-BUILT</text>
+  </g>
+
+  <!-- Main headline -->
+  <text x="80" y="290"
+        font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+        font-weight="900"
+        font-size="92"
+        letter-spacing="-3"
+        fill="#F4F4F5">12 AI sales staff.</text>
+
+  <text x="80" y="385"
+        font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+        font-weight="900"
+        font-size="92"
+        letter-spacing="-3"
+        fill="#4F8BFF">Pre-built. Installed.</text>
+
+  <!-- Subline -->
+  <text x="80" y="450"
+        font-family="Inter, sans-serif"
+        font-weight="400"
+        font-size="22"
+        fill="#A1A1AA">Stop losing deals to follow-up failures.</text>
+  <text x="80" y="482"
+        font-family="Inter, sans-serif"
+        font-weight="400"
+        font-size="22"
+        fill="#A1A1AA">Drop in 12 specialised AI agents for any sales role.</text>
+
+  <!-- Agent grid (decorative — 12 cards showing slash commands) -->
+  <g transform="translate(80, 540)">
+    <g font-family="'JetBrains Mono', 'Courier New', monospace" font-size="13" font-weight="500" fill="#A1A1AA">
+      <!-- Row 1 -->
+      <rect x="0" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="14" y="23">/follow-up</text>
+
+      <rect x="190" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="204" y="23">/objection</text>
+
+      <rect x="380" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="394" y="23">/negotiate</text>
+
+      <rect x="570" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="584" y="23">/proposal</text>
+
+      <rect x="760" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="774" y="23">/pipeline</text>
+
+      <rect x="950" y="0" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="964" y="23">/cold</text>
+
+      <!-- Row 2 -->
+      <rect x="0" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="14" y="71">/recap</text>
+
+      <rect x="190" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="204" y="71">/recover</text>
+
+      <rect x="380" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="394" y="71">/email</text>
+
+      <rect x="570" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="584" y="71">/prep</text>
+
+      <rect x="760" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="774" y="71">/priorities</text>
+
+      <rect x="950" y="48" width="180" height="36" rx="6" fill="#1A1A20" stroke="#27272A" stroke-width="1"/>
+      <text x="964" y="71">/test-drive</text>
+    </g>
+  </g>
+
+  <!-- Price tag (top-right) -->
+  <g transform="translate(1080, 60)">
+    <rect x="0" y="0" width="140" height="64" rx="10" fill="#1A1A20" stroke="#4F8BFF" stroke-width="1.5"/>
+    <text x="70" y="36"
+          font-family="Inter, sans-serif"
+          font-weight="900"
+          font-size="32"
+          fill="#F4F4F5"
+          text-anchor="middle">$97</text>
+    <text x="70" y="54"
+          font-family="Inter, sans-serif"
+          font-weight="500"
+          font-size="10"
+          letter-spacing="1.5"
+          fill="#A1A1AA"
+          text-anchor="middle">ONE-TIME</text>
+  </g>
+</svg>

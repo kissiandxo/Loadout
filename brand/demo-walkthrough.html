@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Loadout · Demo Walkthrough</title>
+<style>
+  /* Animated walkthrough — designed to be screen-recorded as a demo GIF.
+     Open in browser, screen-record the demo container (1280x720), the looping
+     animation shows: install → run slash command → useful result. */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #050507; height: 100vh; display: flex; align-items: center; justify-content: center;
+               font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+  .demo {
+    width: 1280px; height: 720px; background: linear-gradient(135deg, #0A0A0B 0%, #15151A 100%);
+    border-radius: 16px; box-shadow: 0 20px 80px rgba(0,0,0,0.5); position: relative; overflow: hidden;
+    color: #F4F4F5;
+  }
+
+  .demo::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(to right, rgba(79,139,255,0.04) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(79,139,255,0.04) 1px, transparent 1px);
+    background-size: 32px 32px; pointer-events: none;
+  }
+  .demo::after {
+    content: ''; position: absolute; width: 600px; height: 600px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(79,139,255,0.15) 0%, rgba(79,139,255,0) 70%);
+    top: -200px; right: -150px; pointer-events: none;
+  }
+
+  /* Header */
+  .top-bar {
+    position: absolute; top: 28px; left: 32px; right: 32px;
+    display: flex; justify-content: space-between; align-items: center; z-index: 5;
+  }
+  .brand { font-weight: 900; font-size: 22px; letter-spacing: -0.5px; }
+  .brand .dot { color: #4F8BFF; }
+  .step-pill {
+    background: rgba(79,139,255,0.12); color: #4F8BFF; padding: 6px 14px;
+    border-radius: 100px; font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    border: 1px solid rgba(79,139,255,0.3);
+  }
+
+  /* Stage container — each step appears here */
+  .stage {
+    position: absolute; top: 90px; left: 32px; right: 32px; bottom: 32px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+
+  /* Steps */
+  .step {
+    position: absolute; opacity: 0; transition: opacity 0.5s; width: 100%; max-width: 980px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .step.active { opacity: 1; }
+
+  .step-title { font-size: 38px; font-weight: 900; letter-spacing: -1.5px; line-height: 1.1; }
+  .step-title .accent { color: #4F8BFF; }
+  .step-sub { font-size: 16px; color: #A1A1AA; line-height: 1.5; max-width: 700px; }
+
+  /* Terminal-style boxes */
+  .terminal {
+    background: #14141A; border: 1px solid #27272A; border-radius: 12px; padding: 22px 26px;
+    font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 15px; line-height: 1.6;
+    color: #F4F4F5; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .terminal .prompt-char { color: #4F8BFF; }
+  .terminal .typed { color: #F4F4F5; }
+  .terminal .comment { color: #71717A; font-style: italic; }
+  .terminal .response { color: #A1A1AA; font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.7;
+                        margin-top: 16px; padding-top: 16px; border-top: 1px solid #27272A; }
+  .terminal .response strong { color: #F4F4F5; font-weight: 700; }
+  .terminal .response .label { color: #4F8BFF; font-weight: 600; font-size: 11px; letter-spacing: 1px;
+                               text-transform: uppercase; }
+
+  .cursor { display: inline-block; width: 9px; height: 17px; background: #4F8BFF; margin-left: 2px;
+            animation: blink 1s infinite; vertical-align: middle; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* File-tree-style install step */
+  .file-tree {
+    background: #14141A; border: 1px solid #27272A; border-radius: 12px; padding: 22px 26px;
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.9; color: #A1A1AA;
+  }
+  .file-tree .dir { color: #4F8BFF; font-weight: 600; }
+  .file-tree .file { color: #F4F4F5; }
+  .file-tree .check { color: #34D399; }
+
+  /* Animation orchestration — 4 steps, 4 second each, loops */
+  .step:nth-child(1) { animation: showStep 16s infinite; animation-delay: 0s; }
+  .step:nth-child(2) { animation: showStep 16s infinite; animation-delay: 4s; }
+  .step:nth-child(3) { animation: showStep 16s infinite; animation-delay: 8s; }
+  .step:nth-child(4) { animation: showStep 16s infinite; animation-delay: 12s; }
+
+  @keyframes showStep {
+    0%, 6.25% { opacity: 0; transform: translateY(20px); }
+    6.25%, 25% { opacity: 1; transform: translateY(0); }
+    25%, 31.25% { opacity: 0; transform: translateY(-20px); }
+    31.25%, 100% { opacity: 0; }
+  }
+
+  /* Progress bar */
+  .progress {
+    position: absolute; bottom: 32px; left: 32px; right: 32px; height: 3px;
+    background: rgba(255,255,255,0.05); border-radius: 100px; overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%; background: linear-gradient(90deg, #4F8BFF, #2563EB);
+    width: 100%; animation: progress 16s linear infinite;
+    transform-origin: left;
+  }
+  @keyframes progress {
+    0% { transform: scaleX(0); }
+    100% { transform: scaleX(1); }
+  }
+</style>
+</head>
+<body>
+
+<div class="demo">
+  <div class="top-bar">
+    <div class="brand">Loadout<span class="dot">.</span></div>
+    <div class="step-pill" id="pill">INSTALL → RUN → RESULT</div>
+  </div>
+
+  <div class="stage">
+
+    <!-- Step 1: Install -->
+    <div class="step">
+      <h1 class="step-title">1. Drop the kit into <span class="accent">~/.claude/</span></h1>
+      <p class="step-sub">Copy the <code style="font-family: monospace; color: #4F8BFF;">.claude/</code> directory from the bundle into your Claude Code config. 12 agents, 12 slash commands, 8 plugins installed.</p>
+      <div class="file-tree">
+~/.claude/<br>
+├── <span class="dir">commands/</span><br>
+│   ├── <span class="file">follow-up.md</span> <span class="check">✓</span><br>
+│   ├── <span class="file">objection.md</span> <span class="check">✓</span><br>
+│   ├── <span class="file">chatbot.md</span> <span class="check">✓</span><br>
+│   └── <span class="comment">+ 9 more</span><br>
+├── <span class="dir">skills/</span><br>
+│   └── <span class="comment">12 agent definitions installed</span> <span class="check">✓</span><br>
+└── <span class="dir">plugins/</span><br>
+    └── <span class="comment">8 reference docs installed</span> <span class="check">✓</span>
+      </div>
+    </div>
+
+    <!-- Step 2: Run slash command -->
+    <div class="step">
+      <h1 class="step-title">2. Run a <span class="accent">slash command</span></h1>
+      <p class="step-sub">Type <code style="font-family: monospace; color: #4F8BFF;">/follow-up</code> with your deal context. The agent already knows how to think about it.</p>
+      <div class="terminal">
+        <span class="prompt-char">›</span> <span class="typed">/follow-up Sarah test-drove the Sportage SX in Snow White on Saturday, no reply since Sunday's quote, I'm Alex</span><span class="cursor"></span>
+      </div>
+    </div>
+
+    <!-- Step 3: Useful result -->
+    <div class="step">
+      <h1 class="step-title">3. Get <span class="accent">dealership-grade</span> output</h1>
+      <p class="step-sub">Specific. Calibrated to the deal. Ready to send.</p>
+      <div class="terminal">
+        <div class="response" style="margin-top: 0; padding-top: 0; border: none;">
+          <div class="label">Follow-up sequence · Sarah · Sportage SX (Snow White)</div>
+          <p style="margin-top: 10px;"><strong>Touch 1 — Day 4 (today) · SMS</strong></p>
+          <p>Hi Sarah, Alex from Kia. Just checking the quote landed alright — happy to walk through any figures or hold the Snow White while you think. No pressure either way.</p>
+          <p style="margin-top: 12px;"><strong>Touch 2 — Day 7 · Email</strong></p>
+          <p>Subject: That Sportage SX — quick thought<br>Body: Quick one — the Snow White SX is the last in that colour locally. I've got another in transit but Cherry Black, not Snow White. Want me to put a 48-hour hold on it?</p>
+          <p style="margin-top: 12px; color: #71717A; font-size: 12px;">+ 3 more touches with channel switching and the permission-based close-out at Day 21</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: The before/after -->
+    <div class="step">
+      <h1 class="step-title">Same afternoon. <span class="accent">12 new co-workers.</span></h1>
+      <p class="step-sub">Drop in one kit. Get follow-up, objection handling, negotiations, proposals, pipeline review, cold outreach — all calibrated to your business.</p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr; gap: 10px; margin-top: 8px;">
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/follow-up</div>
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/objection</div>
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/negotiate</div>
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/proposal</div>
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/pipeline</div>
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/cold</div>
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/recap</div>
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/recover</div>
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/email</div>
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/prep</div>
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/priorities</div>
+        <div style="background: #14141A; border: 1px solid #27272A; border-radius: 8px; padding: 12px 10px; font-family: monospace; font-size: 12px; color: #4F8BFF; text-align: center;">/test-drive</div>
+      </div>
+      <p style="text-align: center; margin-top: 16px; font-size: 14px; color: #A1A1AA;">
+        Loadout · One install · $97 ·
+        <span style="color: #4F8BFF; font-weight: 600;">yourloadout.com</span>
+      </p>
+    </div>
+
+  </div>
+
+  <div class="progress"><div class="progress-bar"></div></div>
+</div>
+
+</body>
+</html>
