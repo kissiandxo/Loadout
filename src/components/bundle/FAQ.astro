@@ -1,0 +1,32 @@
+---
+interface Props {
+  bundle: any;
+}
+const { bundle: d } = Astro.props;
+---
+<section class="py-24 px-5 sm:px-8 border-t border-edge">
+  <div class="max-w-3xl mx-auto">
+
+    <div data-reveal class="mb-12">
+      <p class="text-xs font-semibold text-muted uppercase tracking-widest mb-4">FAQ</p>
+      <h2 class="text-3xl sm:text-4xl font-black text-white leading-tight">
+        Questions.
+      </h2>
+    </div>
+
+    <dl class="space-y-0">
+      {d.faqs.map((faq: { q: string; a: string }, i: number) => (
+        <div
+          data-reveal
+          data-reveal-delay={String(Math.min(i + 1, 5))}
+          class="border-t border-edge py-6"
+        >
+          <dt class="text-white font-semibold text-base mb-2">{faq.q}</dt>
+          <dd class="text-muted text-sm leading-relaxed">{faq.a}</dd>
+        </div>
+      ))}
+      <div class="border-t border-edge"></div>
+    </dl>
+
+  </div>
+</section>

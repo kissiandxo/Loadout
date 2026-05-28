@@ -1,0 +1,39 @@
+---
+const steps = [
+  { n: '1', title: 'Get Claude Pro', body: 'Sign up for a Claude Pro account ($20/month). Takes about 2 minutes.' },
+  { n: '2', title: 'Open your Setup Guide', body: 'The PDF you receive walks you through every step with screenshots. No experience needed.' },
+  { n: '3', title: 'Install your skills and plugins', body: 'Copy, click, confirm. Each one takes about 60 seconds to install. The guide shows exactly where to click.' },
+  { n: '4', title: 'Run your first skill', body: "Pick something from your day — a follow-up email, a prep task, a summary. Try it. You'll see immediately why this matters." },
+];
+---
+<section class="py-24 px-5 sm:px-8 border-t border-edge">
+  <div class="max-w-4xl mx-auto">
+
+    <div data-reveal class="mb-14">
+      <p class="text-xs font-semibold text-muted uppercase tracking-widest mb-4">Setup</p>
+      <h2 class="text-3xl sm:text-4xl font-black text-white leading-tight mb-3">
+        Running in under 30 minutes.<br />No tech skills required.
+      </h2>
+      <p class="text-muted text-lg">
+        If you can copy and paste, you can set this up. Here's what it looks like.
+      </p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 gap-5">
+      {steps.map((step, i) => (
+        <div
+          data-reveal
+          data-reveal-delay={String(i + 1)}
+          class="p-6 rounded-lg border border-edge bg-surface-2"
+        >
+          <div class="w-8 h-8 rounded-md bg-accent-ghost border border-accent/25 flex items-center justify-center mb-4">
+            <span class="text-accent font-bold text-sm">{step.n}</span>
+          </div>
+          <h3 class="text-white font-bold text-base mb-2">{step.title}</h3>
+          <p class="text-muted text-sm leading-relaxed">{step.body}</p>
+        </div>
+      ))}
+    </div>
+
+  </div>
+</section>

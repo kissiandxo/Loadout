@@ -1,0 +1,32 @@
+---
+interface Props {
+  bundleName?: string;
+  checkoutUrl?: string;
+}
+const { bundleName, checkoutUrl } = Astro.props;
+---
+<header class="fixed top-0 left-0 right-0 z-50 border-b border-edge/50 bg-surface/90 backdrop-blur-md">
+  <div class="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+    <a href="/" class="text-white font-black text-lg tracking-tight">
+      Loadout<span class="text-accent">.</span>
+    </a>
+
+    <nav class="flex items-center gap-6">
+      {checkoutUrl ? (
+        <a
+          href={checkoutUrl}
+          class="text-sm font-semibold bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-md transition-colors duration-200"
+        >
+          Get The Bundle
+        </a>
+      ) : (
+        <a
+          href="/#bundles"
+          class="text-sm font-medium text-muted hover:text-white transition-colors duration-200"
+        >
+          Browse Bundles
+        </a>
+      )}
+    </nav>
+  </div>
+</header>

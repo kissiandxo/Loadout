@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import HomeHero from '../components/home/HomeHero.astro';
+import HowItWorks from '../components/home/HowItWorks.astro';
+import BundleCatalog from '../components/home/BundleCatalog.astro';
+import FounderSection from '../components/home/FounderSection.astro';
+import HomeFAQ from '../components/home/HomeFAQ.astro';
+---
+<BaseLayout
+  title="Done-for-you Claude AI setups by niche"
+  description="Curated Claude AI skill bundles for sales reps, retailers, tradespeople and more — beginner-friendly, live in under 30 minutes."
+>
+  <Nav />
+  <main>
+    <HomeHero />
+    <HowItWorks />
+    <BundleCatalog />
+    <FounderSection />
+    <HomeFAQ />
+  </main>
+  <Footer />
+</BaseLayout>

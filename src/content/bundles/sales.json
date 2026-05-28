@@ -1,0 +1,86 @@
+{
+  "slug": "sales",
+  "niche": "Sales Reps & Dealerships",
+  "name": "The Sales Loadout",
+  "tagline": "Close more deals, write fewer emails, never drop a follow-up again.",
+  "price": 97,
+  "bumpPrice": 47,
+  "premiumPrice": 497,
+  "heroHeadline": "Stop losing deals to follow-up failures.",
+  "heroSubhead": "The complete Claude AI setup for sales reps and small dealerships — built for beginners, live in under 30 minutes.",
+  "problem": [
+    "You sent the quote. They said \"let me think about it.\" And then nothing. You meant to follow up — you just ran out of hours.",
+    "You're rewriting the same email fifteen times a day, just swapping names and deal numbers while leads age in your inbox.",
+    "Your competitors have full BDC teams and AI tools their OEM pays for. You have yourself and a CRM you barely open.",
+    "There's a deal in your pipeline right now that could close — if someone just sent the right message at the right time."
+  ],
+  "shift": "What if the follow-up sent itself? What if every email took 30 seconds instead of 15 minutes? What if you walked into every customer conversation already knowing exactly what to say — and how to handle whatever they throw at you?",
+  "whatsInside": [
+    {
+      "outcome": "Follow-up on autopilot",
+      "description": "Post-quote check-ins, no-show recovery, 7-day drip sequences — written in your voice, ready to send. You stop losing deals because you forgot to follow up.",
+      "items": ["Follow-Up Sequence Skill", "No-Show Recovery Skill", "Lead Re-Engagement Plugin"]
+    },
+    {
+      "outcome": "Write any sales email in under 30 seconds",
+      "description": "Quote emails, trade-in offers, financing nudges, thank-you notes. Drop in the deal details, get a polished email back ready to send.",
+      "items": ["Sales Email Generator Skill", "Deal Summary Plugin", "Objection Handler Skill"]
+    },
+    {
+      "outcome": "Sound sharper in every conversation",
+      "description": "Prep for tough objections, get talking points for any vehicle or service package, and walk into negotiations already knowing your angles.",
+      "items": ["Objection Prep Skill", "Vehicle Talking Points Plugin", "Negotiation Coach Skill"]
+    },
+    {
+      "outcome": "Keep your pipeline moving without a manager",
+      "description": "Know who to call today. Summarise your week. Draft tomorrow's outreach plan — in minutes, not hours.",
+      "items": ["Pipeline Review Skill", "Weekly Recap Generator Plugin", "Priority List Skill"]
+    },
+    {
+      "outcome": "Look like a bigger operation than you are",
+      "description": "Proposal drafts, financing breakdowns, customer-facing summaries — everything looks sharp and professional without the agency price tag.",
+      "items": ["Proposal Builder Skill", "Financing Summary Plugin", "Customer Recap Skill"]
+    }
+  ],
+  "skillCount": 12,
+  "pluginCount": 8,
+  "bonuses": [
+    "Quick-Start Setup Guide (PDF) — every step with screenshots, running in under 30 minutes",
+    "30-Day Prompt Cheat Sheet — the exact phrases to pull the best results from each skill",
+    "5 Done-For-You Sales Script Templates — for trade-ins, financing objections, test-drive follow-ups, and more"
+  ],
+  "bumpName": "The Sales Script Vault",
+  "bumpDescription": "25 additional battle-tested scripts and objection handlers for specific scenarios — trade-in disputes, financing pushback, competitor comparisons, end-of-month closes, and ghost follow-ups.",
+  "premiumName": "Done-With-You Setup Call",
+  "premiumDescription": "A 60-minute 1-on-1 Zoom call. We install everything together, customise your prompts for your specific dealership, and I answer any questions live. You walk away with everything running the same day.",
+  "faqs": [
+    {
+      "q": "Do I need to know anything about AI or coding?",
+      "a": "No. The setup guide walks you through every step with screenshots. If you can copy and paste, you can do this. Most people are up and running in under 30 minutes."
+    },
+    {
+      "q": "What is Claude AI? Do I need a subscription?",
+      "a": "Claude is an AI assistant made by Anthropic — similar to ChatGPT but sharper for writing and sales tasks. You'll need a Claude Pro subscription ($20/month) to use skills and plugins. The Sales Loadout is the curated setup that makes Claude actually useful for your day-to-day work."
+    },
+    {
+      "q": "How is this different from just prompting ChatGPT?",
+      "a": "Generic AI gives generic results. The Sales Loadout is pre-configured for sales reps and dealerships — the skills understand your deal stages, your objections, your follow-up timing. You get far better output without starting from scratch every single time."
+    },
+    {
+      "q": "What if it doesn't work for me?",
+      "a": "14-day no-questions-asked refund. Email us, we'll sort it out. No hoops."
+    },
+    {
+      "q": "Can I use this for my whole sales team?",
+      "a": "The standard licence covers one rep. If you want to set up 3 or more people, reach out before buying — team pricing is available."
+    },
+    {
+      "q": "Does this work for any type of sales, or just dealerships?",
+      "a": "Built with dealerships as the flagship example, but the skills work for any B2C or high-ticket B2B sales role. If your work involves follow-up sequences, written outreach, and objection handling — this fits."
+    }
+  ],
+  "checkoutUrl": "TODO_PASTE_CHECKOUT_URL_HERE",
+  "bumpUrl": "TODO_PASTE_BUMP_URL_HERE",
+  "premiumUrl": "TODO_PASTE_PREMIUM_URL_HERE",
+  "status": "live"
+}

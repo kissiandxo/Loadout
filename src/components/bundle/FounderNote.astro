@@ -1,0 +1,42 @@
+---
+interface Props {
+  bundle: any;
+}
+const { bundle: d } = Astro.props;
+---
+<!-- Founder note for the bundle page.
+     TODO before launch:
+       1. Replace the {FN} initials with your real initials (or swap the div for an <img> headshot at /public/founder.jpg)
+       2. Replace "TODO: Your name" with your name and one short credibility line
+       3. Edit any paragraph that doesn't sound like you. The frame is sales-rep-to-sales-rep credibility — keep that energy. -->
+<section class="py-24 px-5 sm:px-8 border-t border-edge">
+  <div class="max-w-3xl mx-auto">
+
+    <div data-reveal class="flex items-center gap-4 mb-8">
+      <!-- TODO: Replace with your headshot. Use a square ~96x96 image at /public/founder.jpg -->
+      <div class="w-12 h-12 rounded-full bg-surface-3 border border-edge flex items-center justify-center text-white text-sm font-bold shrink-0">
+        FN
+      </div>
+      <div>
+        <p class="text-white font-semibold text-sm">From the founder</p>
+        <p class="text-dim text-xs"><!-- TODO: Your name · your role / credibility line --></p>
+      </div>
+    </div>
+
+    <div data-reveal data-reveal-delay="1" class="space-y-5 text-muted leading-relaxed">
+      <p>
+        I've spent years on the floor of sales. Dozens of leads a week, no BDC team behind me — just a phone, a CRM, and never enough hours.
+      </p>
+      <p>
+        The deals I was losing weren't because I didn't know my product. They were because the follow-up went out at 9pm and never circled back. Because a financing question got buried under three other appointments. Because by Friday, the Monday hot leads had gone cold.
+      </p>
+      <p>
+        I started using Claude AI seriously last year. Not as a toy — as a co-worker. I built the skills and plugins in <span class="text-white font-medium">{d.name}</span> for myself first. Then I cleaned them up so any rep — at any dealer, in any industry — could install the lot and be running the same afternoon.
+      </p>
+      <p class="text-white font-medium">
+        If you're a salesperson tired of being out-followed-up by reps with more support around them, this is the leverage. Thirty minutes to set up. The hours come back from there.
+      </p>
+    </div>
+
+  </div>
+</section>

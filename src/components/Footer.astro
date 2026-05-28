@@ -1,0 +1,20 @@
+---
+const year = new Date().getFullYear();
+---
+<footer class="border-t border-edge mt-32">
+  <div class="max-w-6xl mx-auto px-5 sm:px-8 py-12 flex flex-col sm:flex-row items-center justify-between gap-6">
+    <a href="/" class="text-white font-black text-lg tracking-tight">
+      Loadout<span class="text-accent">.</span>
+    </a>
+
+    <p class="text-dim text-sm order-last sm:order-none">
+      &copy; {year} Loadout. All rights reserved.
+    </p>
+
+    <nav class="flex items-center gap-6 text-sm text-muted">
+      <a href="/#bundles" class="hover:text-white transition-colors">Bundles</a>
+      <a href="/thanks" class="hover:text-white transition-colors">My Purchase</a>
+      <!-- TODO: Add /privacy and /terms once you have them -->
+    </nav>
+  </div>
+</footer>

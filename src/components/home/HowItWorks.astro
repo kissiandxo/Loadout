@@ -1,0 +1,41 @@
+---
+const steps = [
+  {
+    n: '01',
+    title: 'Pick your niche',
+    body: 'Choose the bundle built for your industry. Each one is pre-configured with skills and plugins that match your actual day-to-day work — not a generic AI prompt list.',
+  },
+  {
+    n: '02',
+    title: 'Follow the setup guide',
+    body: 'The included step-by-step guide walks you through every install with screenshots. No AI knowledge needed. Most people are live in under 30 minutes.',
+  },
+  {
+    n: '03',
+    title: 'Work differently',
+    body: 'Your Claude AI is now set up for your job — writing, follow-ups, prep, analysis. The kind of output that usually requires a team or years of AI experience.',
+  },
+];
+---
+<section class="py-28 px-5 sm:px-8 border-t border-edge">
+  <div class="max-w-6xl mx-auto">
+
+    <div data-reveal class="mb-16">
+      <h2 class="text-3xl sm:text-4xl font-black text-white mb-3">How it works</h2>
+      <p class="text-muted text-lg">Three steps from purchase to working smarter.</p>
+    </div>
+
+    <div class="grid sm:grid-cols-3 gap-10 sm:gap-8">
+      {steps.map((step, i) => (
+        <div data-reveal data-reveal-delay={String(i + 1)} class="relative">
+          <div class="text-[5rem] font-black leading-none text-edge select-none mb-4 tabular-nums">
+            {step.n}
+          </div>
+          <h3 class="text-xl font-bold text-white mb-3">{step.title}</h3>
+          <p class="text-muted text-sm leading-relaxed">{step.body}</p>
+        </div>
+      ))}
+    </div>
+
+  </div>
+</section>
