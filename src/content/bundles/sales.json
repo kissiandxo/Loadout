@@ -1,13 +1,13 @@
 {
   "slug": "sales",
-  "niche": "Sales Reps & Dealerships",
+  "niche": "Sales Staff",
   "name": "The Sales Loadout",
-  "tagline": "Close more deals, write fewer emails, never drop a follow-up again.",
+  "tagline": "12 AI sales staff. Pre-built. Install once, every deal moves faster.",
   "price": 97,
   "bumpPrice": 47,
   "premiumPrice": 497,
-  "heroHeadline": "Stop losing deals to follow-up failures.",
-  "heroSubhead": "The complete Claude AI setup for sales reps and small dealerships — built for beginners, live in under 30 minutes.",
+  "heroHeadline": "12 AI sales staff. Pre-built.",
+  "heroSubhead": "Stop losing deals to follow-up failures, slow proposals, and missed objections. Install 12 specialised AI staff — a follow-up specialist, an email copywriter, an objection coach, a pipeline analyst, and 8 more — for any sales role. Same afternoon, your sales team has 12 new co-workers.",
   "problem": [
     "You sent the quote. They said \"let me think about it.\" And then nothing. You meant to follow up — you just ran out of hours.",
     "You're rewriting the same email fifteen times a day, just swapping names and deal numbers while leads age in your inbox.",
@@ -18,28 +18,28 @@
   "whatsInside": [
     {
       "outcome": "Follow-up on autopilot",
-      "description": "Post-quote check-ins, no-show recovery, 7-day drip sequences — written in your voice, ready to send. You stop losing deals because you forgot to follow up.",
-      "items": ["Follow-Up Sequence Skill", "No-Show Recovery Skill", "Lead Re-Engagement Plugin"]
+      "description": "Quote follow-up sequences, no-show recovery, post-test-drive check-ins — written in your voice, ready to send. You stop losing deals because you forgot to follow up.",
+      "items": ["Follow-Up Sequence agent (/follow-up)", "No-Show Recovery agent (/recover)", "Test Drive Follow-Up agent (/test-drive)", "Lead Re-Engagement plugin"]
     },
     {
       "outcome": "Write any sales email in under 30 seconds",
-      "description": "Quote emails, trade-in offers, financing nudges, thank-you notes. Drop in the deal details, get a polished email back ready to send.",
-      "items": ["Sales Email Generator Skill", "Deal Summary Plugin", "Objection Handler Skill"]
+      "description": "Quote emails, trade-in offers, financing nudges, thank-you notes, cold outreach. Drop in the deal details, get a polished email back ready to send.",
+      "items": ["Sales Email Generator agent (/email)", "Cold Outreach agent (/cold)", "Deal Summary plugin"]
     },
     {
       "outcome": "Sound sharper in every conversation",
-      "description": "Prep for tough objections, get talking points for any vehicle or service package, and walk into negotiations already knowing your angles.",
-      "items": ["Objection Prep Skill", "Vehicle Talking Points Plugin", "Negotiation Coach Skill"]
+      "description": "Pre-meeting prep on the 5 most likely objections. Live framings when you get hit with one. Negotiation maps when the gap is $5k and you've got 20 minutes to close.",
+      "items": ["Objection Prep agent (/prep)", "Objection Handler agent (/objection)", "Negotiation Coach agent (/negotiate)", "Customer Profile plugin", "Vehicle Talking Points plugin"]
     },
     {
       "outcome": "Keep your pipeline moving without a manager",
-      "description": "Know who to call today. Summarise your week. Draft tomorrow's outreach plan — in minutes, not hours.",
-      "items": ["Pipeline Review Skill", "Weekly Recap Generator Plugin", "Priority List Skill"]
+      "description": "Know who to call today. Strategic weekly read on which deals close and which are dying. Capture every customer interaction in 60 seconds, so your CRM stays current.",
+      "items": ["Pipeline Review agent (/pipeline)", "Priority List agent (/priorities)", "Customer Recap agent (/recap)", "Weekly Recap plugin"]
     },
     {
       "outcome": "Look like a bigger operation than you are",
-      "description": "Proposal drafts, financing breakdowns, customer-facing summaries — everything looks sharp and professional without the agency price tag.",
-      "items": ["Proposal Builder Skill", "Financing Summary Plugin", "Customer Recap Skill"]
+      "description": "Professional 1–2 page proposals from a brief. Finance explanations that don't get you in trouble. Trade-in framings that protect the deal.",
+      "items": ["Proposal Builder agent (/proposal)", "Financing Summary plugin", "Trade-In Framework plugin", "Phone Script Library plugin"]
     }
   ],
   "skillCount": 12,
@@ -75,8 +75,8 @@
       "a": "The standard licence covers one rep. If you want to set up 3 or more people, reach out before buying — team pricing is available."
     },
     {
-      "q": "Does this work for any type of sales, or just dealerships?",
-      "a": "Built with dealerships as the flagship example, but the skills work for any B2C or high-ticket B2B sales role. If your work involves follow-up sequences, written outreach, and objection handling — this fits."
+      "q": "Does this work for my industry?",
+      "a": "Yes if your work involves follow-up sequences, written outreach, proposals, and objection handling. The agents are calibrated for sales work universally — SaaS, agencies, services, retail, B2B, dealerships, real estate, anything high-ticket. Examples in the bundle use a car-dealership context because the language is concrete, but the patterns work for any sales role. You can swap in your own vocabulary in 5 minutes per agent."
     }
   ],
   "checkoutUrl": "TODO_PASTE_CHECKOUT_URL_HERE",
