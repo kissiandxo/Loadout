@@ -27,6 +27,7 @@ $Include = @(
   'README.md',
   'SETUP-GUIDE.md',
   'PROMPT-CHEAT-SHEET.md',
+  'PROMPT-CHEAT-SHEET.pdf',
   'install',
   'skills',
   'plugins',

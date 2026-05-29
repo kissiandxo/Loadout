@@ -79,8 +79,8 @@
       "a": "Yes if your work involves follow-up sequences, written outreach, proposals, and objection handling. The agents are calibrated for sales work universally — SaaS, agencies, services, retail, B2B, dealerships, real estate, anything high-ticket. Examples in the bundle use a car-dealership context because the language is concrete, but the patterns work for any sales role. You can swap in your own vocabulary in 5 minutes per agent."
     }
   ],
-  "checkoutUrl": "TODO_PASTE_CHECKOUT_URL_HERE",
-  "bumpUrl": "TODO_PASTE_BUMP_URL_HERE",
-  "premiumUrl": "TODO_PASTE_PREMIUM_URL_HERE",
+  "checkoutUrl": "https://REPLACE.lemonsqueezy.com/buy/sales-standard-97",
+  "bumpUrl": "https://REPLACE.lemonsqueezy.com/buy/sales-vault-144",
+  "premiumUrl": "https://REPLACE.lemonsqueezy.com/buy/done-with-you-497",
   "status": "live"
 }

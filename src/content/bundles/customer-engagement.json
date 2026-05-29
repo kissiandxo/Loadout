@@ -80,8 +80,8 @@
       "a": "Many buyers run this in parallel for 2-4 weeks, then cancel their SaaS subscription once they've confirmed the owned version performs as well or better. The cost differential pays for the kit in 1-3 months for most businesses."
     }
   ],
-  "checkoutUrl": "TODO_PASTE_CHECKOUT_URL_HERE",
-  "bumpUrl": "TODO_PASTE_BUMP_URL_HERE",
-  "premiumUrl": "TODO_PASTE_PREMIUM_URL_HERE",
+  "checkoutUrl": "https://REPLACE.lemonsqueezy.com/buy/customer-engagement-standard-97",
+  "bumpUrl": "https://REPLACE.lemonsqueezy.com/buy/customer-engagement-vault-144",
+  "premiumUrl": "https://REPLACE.lemonsqueezy.com/buy/done-with-you-497",
   "status": "live"
 }

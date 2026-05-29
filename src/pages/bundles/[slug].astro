@@ -27,11 +27,44 @@ export async function getStaticPaths() {
 
 const { bundle } = Astro.props;
 const d = bundle.data;
+
+const bundleURL = new URL(Astro.url.pathname, Astro.site);
+
+// Product structured data — shows price/availability in search results.
+const productLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: d.name,
+  description: d.tagline,
+  category: 'SoftwareApplication',
+  brand: { '@type': 'Brand', name: 'Loadout' },
+  image: new URL('/og-default.png', Astro.site).href,
+  offers: {
+    '@type': 'Offer',
+    price: d.price,
+    priceCurrency: 'USD',
+    availability: 'https://schema.org/InStock',
+    url: bundleURL.href,
+  },
+};
+
+// FAQ structured data — eligible for FAQ rich results.
+const faqLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: d.faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
 ---
 <BaseLayout
   title={d.name}
   description={`${d.tagline} — ${d.skillCount} skills, ${d.pluginCount} plugins, setup in under 30 minutes.`}
 >
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(productLd)} />
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(faqLd)} />
   <Nav checkoutUrl={d.checkoutUrl} />
   <main>
     <Hero bundle={d} />

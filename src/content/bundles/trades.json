@@ -57,8 +57,8 @@
       "a": "14-day no-questions-asked refund. Email us."
     }
   ],
-  "checkoutUrl": "TODO_PASTE_CHECKOUT_URL_HERE",
-  "bumpUrl": "TODO_PASTE_BUMP_URL_HERE",
-  "premiumUrl": "TODO_PASTE_PREMIUM_URL_HERE",
+  "checkoutUrl": "https://REPLACE.lemonsqueezy.com/buy/operations-standard-97",
+  "bumpUrl": "https://REPLACE.lemonsqueezy.com/buy/operations-admin-144",
+  "premiumUrl": "https://REPLACE.lemonsqueezy.com/buy/done-with-you-497",
   "status": "coming-soon"
 }
