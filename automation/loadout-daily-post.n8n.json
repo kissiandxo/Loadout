@@ -1,0 +1,44 @@
+{
+  "name": "LOADOUT - Daily Social Post (review)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "days", "triggerAtHour": 8 } ] }
+      },
+      "id": "a1b2c3d4-0001-4001-8001-000000000001",
+      "name": "Daily 8am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const posts=[`🚀 Meet LOADOUT — done-for-you Claude AI skill kits for any business. Install once, live in 30 min, no code. Your AI staff start today. #AItools #smallbusiness #automation`,`You don't need a bigger team — you need AI staff that already know the job. LOADOUT installs 12 of them in one command. #productivity #solopreneur #ai`,`Still paying $99/mo for software that doesn't know your business? LOADOUT is one-time, yours forever, tuned to you. #saas #smallbiz #automation`,`The work that eats your day — follow-ups, replies, admin, content — handled by AI staff you install in 30 minutes. #worksmarter #ai #entrepreneur`,`Do I need to code? Nope. If you can copy-paste, you can run LOADOUT. Live in under 30 minutes. #nocode #aitools #smallbusiness`,`Big-company output. Solo-operator overhead. That's the whole point of LOADOUT. #startup #founder #automation`,`How it works: 1) download the kit 2) open Claude 3) type /loadout-setup. Done. 12 AI staff, live. #ai #howitworks #productivity`,`Your competitors have teams. You'll have AI staff that never sleep, never forget a follow-up, never miss a reply. #smallbusiness #ai #growth`,`Every I-will-do-it-later task is money leaking out. LOADOUT does it now, automatically. #sales #followup #automation`,`One-time price. No subscriptions. No lock-in. You own your AI staff. #ownit #saasalternative #ai`,`Works for trades, agencies, e-com, services, coaching — any business that talks to customers. #smallbusiness #automation #ai`,`Spending nights writing the same emails? Hand it to an AI staffer that writes them in your voice in seconds. #copywriting #ai #productivity`,`The difference between a lead that closes and one that ghosts is usually one timely message. LOADOUT sends it. #sales #leadgen #automation`,`Stop renting your customer chatbot. With LOADOUT you build one you own — for the price of one month of SaaS. #chatbot #ai #smallbiz`,`AI won't replace you. A competitor using AI staff might. Level up. #ai #business #growth`,`Myth: AI tools are complicated. Reality: type one command, answer a few questions, done. #nocode #ai #aitools`,`12 specialist AI staff beats 1 generic chatbot. Specialists know your stages, your objections, your tone. #ai #sales #cx`,`Your support inbox, triaged and drafted before your coffee's cold. That's an AI staffer's morning. #customersupport #automation #ai`,`Reviews, refunds, win-backs, onboarding — the unglamorous work that keeps customers. Automated. #retention #cx #smallbusiness`,`Behind the build: LOADOUT exists so one person can run like ten. That's the mission. #buildinpublic #founder #startup`,`What's it cost to run? Cents. A self-owned AI chatbot is about $1 per 1,000 chats vs $200+/mo SaaS. #ai #saasalternative #smallbiz`,`The best time to add AI staff was last year. The second best time is the next 30 minutes. #ai #productivity #entrepreneur`,`No new hires. No new software bills. Just 12 AI staff that start the day you install them. #smallbusiness #automation #ai`,`Try it risk-free —  14-day money-back. If it doesn't earn its keep, you don't keep it. #guarantee #aitools #smallbiz`,`Quote faster, follow up without forgetting, sound sharper in every reply. A normal Tuesday with LOADOUT. #sales #ai #productivity`,`Templates are dead weight. AI staff adapt to the actual moment — the customer, the deal, the tone. #ai #copywriting #cx`,`You started your business to do the work you love — not to drown in admin. Give the admin to AI. #smallbusiness #worklifebalance #ai`,`Set it up once on a Sunday. Reap it every day after. #automation #ai #productivity`,`Real talk: most AI-for-business is hype. LOADOUT is just pre-built staff that do specific jobs well. #ai #nohype #smallbiz`,`LOADOUT is live. Pre-built Claude AI skill kits from $97. Install once. Run forever. Link in bio 👇 #launch #aitools #smallbusiness`];const start=new Date('2026-06-01T00:00:00');const today=new Date();const i=Math.floor((today-start)/86400000);const idx=((i%posts.length)+posts.length)%posts.length;return [{json:{date:today.toISOString().slice(0,10),index:idx+1,post:posts[idx]}}];"
+      },
+      "id": "a1b2c3d4-0002-4002-8002-000000000002",
+      "name": "Pick today's post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "phoenixjennings69@gmail.com",
+        "subject": "=LOADOUT post #{{ $json.index }} — {{ $json.date }}",
+        "message": "=Today's LOADOUT post (copy-paste to FB + IG):\n\n{{ $json.post }}\n\n— auto-generated by your n8n daily-poster.",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4003-8003-000000000003",
+      "name": "Email me the post",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [780, 300]
+    }
+  ],
+  "connections": {
+    "Daily 8am": { "main": [ [ { "node": "Pick today's post", "type": "main", "index": 0 } ] ] },
+    "Pick today's post": { "main": [ [ { "node": "Email me the post", "type": "main", "index": 0 } ] ] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false
+}

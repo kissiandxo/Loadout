@@ -28,6 +28,11 @@ not the headline.
 4. **GitHub**: `gh` not installed — install/auth or create repo manually → `git push`.
 5. **Social**: rename FB page "Claude" → "LOADOUT — AI Skill Kits"; set FB+IG profile/cover/bio
    (assets + copy ready). macOS `install.sh` still unverified on a real Mac.
+6. **Automation**: `automation/` has a ready-to-import n8n daily-poster
+   (`loadout-daily-post.n8n.json`, INACTIVE — emails Phoenix a post each morning to review) + a
+   30-post content bank + README. n8n was offline tonight, so it's an artifact to import when n8n
+   (localhost:5678) is running. Existing n8n WF "03 - AI Social Media Poster"
+   (id 3SxKl4bojg69yK1a) can be wired for true FB/IG auto-post later (needs Meta token or Buffer).
 
 ## NEXT SESSION — paste this (edit as you like)
 > Resume LOADOUT launch. Read RESUME-LAUNCH.md + memory project_loadout.md. I've [done X].
