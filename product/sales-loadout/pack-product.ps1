@@ -23,9 +23,11 @@ Write-Host ""
 
 # Files that ship in BOTH Standard and Vault
 $Include = @(
+  'INSTALL.md',
   'README.md',
   'SETUP-GUIDE.md',
   'PROMPT-CHEAT-SHEET.md',
+  'install',
   'skills',
   'plugins',
   '.claude',

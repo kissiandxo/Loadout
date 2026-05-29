@@ -10,6 +10,7 @@ Total time to go live from here: **~3 hours** if you push through.
 
 - ✅ Sales Loadout kit built + zipped → `product/sales-loadout/dist/`
 - ✅ Customer Engagement Loadout kit built + zipped → `product/customer-engagement-loadout/dist/`
+- ✅ **One-command auto-installer** added to both kits → buyer opens the folder in Claude Code and types `/loadout-setup`; Claude installs all 12 skills + 12 commands + 8 plugins, verifies, and reports. Manual `SETUP-GUIDE.md` kept as fallback. Verified end-to-end on Windows (project + global modes, self-heal). macOS `install.sh` still to be validated on a Mac. Zips re-packed with the installer included.
 - ✅ Astro site builds clean (3 live pages: home + 2 bundle pages + thanks)
 - ✅ Site repositioned as "AI staff pre-built for any business"
 - ✅ Personal info scrubbed (no Phoenix / Gateway / Kia / Mitsubishi / NSW anywhere shipping)

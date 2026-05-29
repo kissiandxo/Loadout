@@ -1,8 +1,21 @@
 # The Sales Loadout — Setup Guide
 
-You bought it. Let's get it running in under 30 minutes.
+You bought it. Let's get it running.
 
-There are two ways to install the Sales Loadout, depending on how you use Claude. Pick the path that matches your setup.
+## Fastest way — let Claude install it for you (Claude Code)
+
+If you use **Claude Code**, you don't need the manual steps below. Just:
+
+1. Unzip this kit and open the folder in Claude Code.
+2. Type **`/loadout-setup`** and press enter.
+
+Claude installs all 12 skills, 12 commands, and 8 plugins, verifies everything, and shows you how to start — in a couple of minutes. (`INSTALL.md` has the 20-second version.)
+
+The manual paths below are still here if you'd rather do it yourself, or if you use Claude.ai on the web.
+
+---
+
+There are two ways to install the Sales Loadout manually, depending on how you use Claude. Pick the path that matches your setup.
 
 | Your situation | Install path |
 |---|---|

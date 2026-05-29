@@ -1,6 +1,8 @@
 # The Sales Loadout
 
-12 AI agents + 8 reference plugins for car-dealership sales reps. Built to install in under 30 minutes and start producing dealership-quality sales output the same afternoon.
+12 AI agents + 8 reference plugins for car-dealership sales reps. Built to start producing dealership-quality sales output the same afternoon.
+
+**Using Claude Code? Skip the manual setup:** open this folder in Claude Code and type **`/loadout-setup`** — Claude installs and verifies everything for you in a couple of minutes. See `INSTALL.md`.
 
 ---
 
@@ -9,7 +11,9 @@
 ```
 sales-loadout/
 ├── README.md                 ← you are here
-├── SETUP-GUIDE.md            ← read this first — install in 30 min
+├── INSTALL.md                 ← fastest start: open in Claude Code, type /loadout-setup
+├── install/                   ← the auto-installer (Claude runs this for you)
+├── SETUP-GUIDE.md            ← full manual steps (Claude Code + Claude.ai)
 ├── PROMPT-CHEAT-SHEET.md     ← the magic phrases for each agent
 ├── VAULT-SCRIPTS.md          ← (Plus tier) 25 battle-tested scripts
 │

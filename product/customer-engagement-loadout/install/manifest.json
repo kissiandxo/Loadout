@@ -1,0 +1,21 @@
+{
+  "kit": "the-customer-engagement-loadout",
+  "displayName": "The Customer Engagement Loadout",
+  "version": "v1",
+  "tagline": "12 AI customer-engagement staff + your own website chatbot, pre-built for Claude.",
+  "source": {
+    "skills": "skills",
+    "commands": ".claude/commands",
+    "plugins": "plugins"
+  },
+  "expectedCounts": {
+    "skills": 12,
+    "commands": 12,
+    "plugins": 8
+  },
+  "installerCommand": "loadout-setup",
+  "sampleCommand": "review",
+  "nextSteps": ["/review", "/complaint", "/faq", "/triage", "/winback"],
+  "requiredKeys": [],
+  "notes": "Pure Claude skills/commands/plugins. The website-chatbot-builder is a skill that generates a chatbot when you run it -- nothing is deployed at install time, and no API keys are required to install."
+}

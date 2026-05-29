@@ -21,9 +21,11 @@ Write-Host "Output : $DistDir"
 Write-Host ""
 
 $Include = @(
+  'INSTALL.md',
   'README.md',
   'SETUP-GUIDE.md',
   'PROMPT-CHEAT-SHEET.md',
+  'install',
   'skills',
   'plugins',
   '.claude',

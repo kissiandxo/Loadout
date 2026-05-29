@@ -1,8 +1,21 @@
 # The Customer Engagement Loadout — Setup Guide
 
-You bought it. Let's get it running. Most users have at least Agent #01 (the Website Chatbot Builder) deployed in under an hour.
+You bought it. Let's get it running.
 
-There are three install paths depending on what you want first:
+## Fastest way — let Claude install it for you (Claude Code)
+
+If you use **Claude Code**, you don't need the manual steps below. Just:
+
+1. Unzip this kit and open the folder in Claude Code.
+2. Type **`/loadout-setup`** and press enter.
+
+Claude installs all 12 skills, 12 commands, and 8 plugins, verifies everything, and shows you how to start — in a couple of minutes. (`INSTALL.md` has the 20-second version.) Then use the **Website Chatbot Builder** skill whenever you're ready to deploy your live chatbot — it walks you through that separately.
+
+The manual paths below are still here if you'd rather do it yourself, or if you use Claude.ai on the web.
+
+---
+
+There are three manual install paths depending on what you want first:
 
 | Your situation | Start here |
 |---|---|

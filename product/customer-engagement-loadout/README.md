@@ -2,6 +2,8 @@
 
 12 AI agents + 8 reference plugins for businesses that want owned customer engagement infrastructure — not another SaaS subscription. Includes a complete website chatbot stack (system prompt + embed widget + serverless proxy) that replaces $19-99/month chatbot SaaS.
 
+**Using Claude Code? Skip the manual setup:** open this folder in Claude Code and type **`/loadout-setup`** — Claude installs and verifies everything for you in a couple of minutes. See `INSTALL.md`. (Deploy the live website chatbot afterwards via the Website Chatbot Builder skill.)
+
 ---
 
 ## What's in this bundle
@@ -9,7 +11,9 @@
 ```
 customer-engagement-loadout/
 ├── README.md                 ← you are here
-├── SETUP-GUIDE.md            ← read this first — install in 30 min
+├── INSTALL.md                 ← fastest start: open in Claude Code, type /loadout-setup
+├── install/                   ← the auto-installer (Claude runs this for you)
+├── SETUP-GUIDE.md            ← full manual steps (Claude Code + Claude.ai)
 ├── PROMPT-CHEAT-SHEET.md     ← the magic phrases for each agent
 ├── VAULT-SCRIPTS.md          ← (Vault tier) 25 battle-tested retention + support scripts
 │
