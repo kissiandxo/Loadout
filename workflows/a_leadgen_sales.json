@@ -1431,5 +1431,248 @@
       "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
     },
     "active": false
+  },
+  {
+    "id": "ec469b77-d46f-4884-88ba-cfd1c881984e",
+    "name": "A8 — Abandoned Quote / Cart Recovery (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "hoursInterval": 6
+              }
+            ]
+          }
+        },
+        "id": "c434b2c7-5b57-4ec4-8216-495111f6c19b",
+        "name": "Every 6 hours",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Quotes",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "cda417fe-44a6-4a7f-8e57-efb6c6574e41",
+        "name": "Read Quotes",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          440,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const now=Date.now();\nreturn items.map(i=>i.json).filter(r=>r.email && (r.status||'')!=='won' && (r.status||'')!=='lost' && r.recovered!=='yes' && r.sentAt && (now-Date.parse(r.sentAt))/3600000>=24).map(r=>({json:r}));"
+        },
+        "id": "e9d6cb7f-8767-498d-8f26-da434bcb06b7",
+        "name": "Find Abandoned",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Customer {{$json.name}} hasn't moved on: {{$json.item || 'their quote'}} (sent {{$json.sentAt}}). Write the nudge.",
+          "options": {
+            "systemMessage": "=You recover stalled quotes/carts for {{$env.BUSINESS_NAME}}. Write a short, low-pressure nudge (under 90 words): reference what they were after, remove one likely friction (price, timing, a question), and give one easy next step (reply or book {{$env.BOOKING_LINK}}). Output ONLY the email body."
+          }
+        },
+        "id": "e5197af6-9caa-40aa-8c13-b5a7771c9115",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          880,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "0e528de8-63ba-43cb-8871-8d2a1d767b77",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          840,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$('Find Abandoned').item.json.email}}",
+          "subject": "=Still keen, {{$('Find Abandoned').item.json.name}}? — {{$env.BUSINESS_NAME}}",
+          "message": "={{$json.output}}",
+          "options": {}
+        },
+        "id": "8f21080a-87f9-4b2f-8068-44c9935675c5",
+        "name": "Send Recovery Email",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1180,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "0601a2ee-5d8c-44eb-84fb-30b8288bf99a",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          1400,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Every 6 hours": {
+        "main": [
+          [
+            {
+              "node": "Read Quotes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Quotes": {
+        "main": [
+          [
+            {
+              "node": "Find Abandoned",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Abandoned": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Send Recovery Email",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Recovery Email": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
   }
 ]

@@ -514,5 +514,184 @@
       "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
     },
     "active": false
+  },
+  {
+    "id": "e16d6b04-3e12-4949-8aab-dbb102dd1ec5",
+    "name": "C16 — Referral Request Automation",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 15
+              }
+            ]
+          }
+        },
+        "id": "8e001769-c599-47c5-80bf-e708f0e8331a",
+        "name": "Daily 3pm",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Jobs",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "eab1cfdf-46ba-4226-8888-4d1b2994a710",
+        "name": "Read Jobs",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          440,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "return items.map(i=>i.json).filter(r=>(r.status||'')==='completed' && (r.sentiment||'positive')==='positive' && r.referralAsked!=='yes' && r.email).map(r=>({json:r}));"
+        },
+        "id": "d9226611-8768-4cdb-8095-b74693e31e30",
+        "name": "Happy & Eligible",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$json.email}}",
+          "subject": "=Know someone who'd love {{$env.BUSINESS_NAME}}?",
+          "message": "=Hi {{$json.name}}, so glad we could help! If you know someone who'd benefit, here's an easy link to share: {{$env.REFERRAL_LINK}}\n\nThank you — it means the world to a small business.",
+          "options": {}
+        },
+        "id": "d598fa92-08e7-47df-89c8-59ffb8c374e4",
+        "name": "Ask for Referral",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          880,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "116da83e-c0e7-48f4-89be-9ca52893f006",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          1100,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Daily 3pm": {
+        "main": [
+          [
+            {
+              "node": "Read Jobs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Jobs": {
+        "main": [
+          [
+            {
+              "node": "Happy & Eligible",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Happy & Eligible": {
+        "main": [
+          [
+            {
+              "node": "Ask for Referral",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ask for Referral": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
   }
 ]

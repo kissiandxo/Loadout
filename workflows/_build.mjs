@@ -443,6 +443,38 @@ function buildLeadGen() {
     wfs.push(workflow("A7 — Appointment Booking & Reminders", [trig, read, due, sms, mail, log], conn));
   }
 
+  // A8 — Abandoned Quote / Cart Recovery (AI)
+  {
+    const wf = "a/recovery";
+    const trig = N(wf, "Every 6 hours", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", hoursInterval: 6 }] } }, 220, 300);
+    const read = N(wf, "Read Quotes", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CRM_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Quotes", mode: "name" }, options: {},
+    }, 440, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const stale = N(wf, "Find Abandoned", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const now=Date.now();\n" +
+        "return items.map(i=>i.json).filter(r=>r.email && (r.status||'')!=='won' && (r.status||'')!=='lost' && r.recovered!=='yes' && r.sentAt && (now-Date.parse(r.sentAt))/3600000>=24).map(r=>({json:r}));",
+    }, 660, 300);
+    const ai = aiAgent(wf, 880, 300,
+      "=You recover stalled quotes/carts for {{$env.BUSINESS_NAME}}. Write a short, low-pressure nudge (under 90 words): reference what they were after, remove one likely friction (price, timing, a question), and give one easy next step (reply or book {{$env.BOOKING_LINK}}). Output ONLY the email body.",
+      "=Customer {{$json.name}} hasn't moved on: {{$json.item || 'their quote'}} (sent {{$json.sentAt}}). Write the nudge.");
+    const send = N(wf, "Send Recovery Email", "n8n-nodes-base.gmail", 2.1, {
+      sendTo: "={{$('Find Abandoned').item.json.email}}",
+      subject: "=Still keen, {{$('Find Abandoned').item.json.name}}? — {{$env.BUSINESS_NAME}}",
+      message: "={{$json.output}}", options: {},
+    }, 1180, 300, { credentials: CRED.gmail, onError: "continueRegularOutput" });
+    const log = logRun(wf, 1400, 300);
+    const conn = merge([
+      connect(["Every 6 hours", "Read Quotes", "Find Abandoned", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Send Recovery Email", "Log Run"]),
+    ]);
+    wfs.push(workflow("A8 — Abandoned Quote / Cart Recovery (AI)", [trig, read, stale, ...ai.nodes, send, log], conn));
+  }
+
   return wfs;
 }
 
@@ -657,6 +689,31 @@ function buildReputation() {
       ]),
     ]);
     wfs.push(workflow("C15 — Complaint De-escalation (AI)", [trig, ...ai.nodes, draft, escalate], conn));
+  }
+
+  // C16 — Referral Request Automation
+  {
+    const wf = "c/referral";
+    const trig = N(wf, "Daily 3pm", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", triggerAtHour: 15 }] } }, 220, 300);
+    const read = N(wf, "Read Jobs", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CRM_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Jobs", mode: "name" }, options: {},
+    }, 440, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const happy = N(wf, "Happy & Eligible", "n8n-nodes-base.code", 2, {
+      jsCode: "return items.map(i=>i.json).filter(r=>(r.status||'')==='completed' && (r.sentiment||'positive')==='positive' && r.referralAsked!=='yes' && r.email).map(r=>({json:r}));",
+    }, 660, 300);
+    const mail = N(wf, "Ask for Referral", "n8n-nodes-base.gmail", 2.1, {
+      sendTo: "={{$json.email}}",
+      subject: "=Know someone who'd love {{$env.BUSINESS_NAME}}?",
+      message: "=Hi {{$json.name}}, so glad we could help! If you know someone who'd benefit, here's an easy link to share: {{$env.REFERRAL_LINK}}\n\nThank you — it means the world to a small business.",
+      options: {},
+    }, 880, 300, { credentials: CRED.gmail, onError: "continueRegularOutput" });
+    const log = logRun(wf, 1100, 300);
+    wfs.push(workflow("C16 — Referral Request Automation",
+      [trig, read, happy, mail, log],
+      connect(["Daily 3pm", "Read Jobs", "Happy & Eligible", "Ask for Referral", "Log Run"])));
   }
 
   return wfs;
