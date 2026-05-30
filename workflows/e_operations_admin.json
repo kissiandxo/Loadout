@@ -1,0 +1,922 @@
+[
+  {
+    "id": "1a588432-2043-4d6f-8c8a-c46385e0f418",
+    "name": "E21 — Invoice & Receipt Processor (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-invoice",
+          "responseMode": "lastNode"
+        },
+        "id": "271129c2-871c-4bc6-8d07-bde0542bfac3",
+        "name": "Invoice In (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "f87c9277-0119-4a8d-8ffc-107938375292"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Invoice text:\n{{$json.body.text}}",
+          "options": {
+            "systemMessage": "=You extract structured data from an invoice/receipt. Output ONLY valid JSON: {\"vendor\":\"\",\"date\":\"YYYY-MM-DD\",\"total\":0,\"currency\":\"\",\"category\":\"\",\"invoiceNumber\":\"\"}. If a field is missing, use empty string or 0."
+          }
+        },
+        "id": "d126b78b-5166-42b5-88ac-574bb2448588",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "fa1546a4-873b-4c46-88f0-eafce1257f4e",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "let o={}; try{o=JSON.parse($json.output)}catch(e){o={vendor:'',date:'',total:0,currency:'',category:'',invoiceNumber:'',raw:$json.output}} return [{json:o}];"
+        },
+        "id": "e80dbbb9-3657-43c4-85c8-26217be02ef2",
+        "name": "Parse JSON",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          760,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.ACCOUNTING_SHEET_ID || $env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Invoices",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "c906e106-16b9-4984-8d53-fc10860d7ba3",
+        "name": "Log to Accounting Sheet",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          1000,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Invoice In (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Parse JSON",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse JSON": {
+        "main": [
+          [
+            {
+              "node": "Log to Accounting Sheet",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "c957f6b4-9a26-4746-8009-1dfcd9ba76c0",
+    "name": "E22 — Document & Contract Summarizer (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-summarize-doc",
+          "responseMode": "lastNode"
+        },
+        "id": "14e9971b-058a-4fc3-8b81-d8329d963f6b",
+        "name": "Document (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "77982734-60ac-4493-8d71-23c6a3dc7a77"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Document:\n{{$json.body.text}}",
+          "options": {
+            "systemMessage": "=You summarise documents/contracts for a busy owner. Output: a 3-bullet TL;DR, then KEY TERMS (parties, obligations, payment), then IMPORTANT DATES (with the date), then any RISKS to check with a professional. Plain English."
+          }
+        },
+        "id": "ff896072-0dfa-46b4-8359-abcf0b962da4",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "12a37eae-59bf-4640-83c5-18209f68397c",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "Document summary ready",
+          "message": "={{$json.output}}\n\n(Not legal advice — check anything important with a professional.)",
+          "options": {}
+        },
+        "id": "1989a170-b436-4e4d-8ee9-cb1008ab436d",
+        "name": "Email Summary",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          760,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "745f2411-7a0d-45f6-8a32-fe877f6dfae2",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          980,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Document (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Email Summary",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email Summary": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "c274ee66-4ae5-4a36-87ec-3209efad9455",
+    "name": "E23 — Meeting Notes & Action Items (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-meeting-notes",
+          "responseMode": "lastNode"
+        },
+        "id": "abb9ee6c-0932-4b14-835c-cd66006151f2",
+        "name": "Transcript (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "bb1f065e-b3bc-499d-8a26-f6439fc10e78"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Transcript:\n{{$json.body.transcript}}",
+          "options": {
+            "systemMessage": "=You turn a meeting transcript into: a short SUMMARY, DECISIONS made, and ACTION ITEMS as a checklist with owner + due date where stated. Plain English, scannable."
+          }
+        },
+        "id": "a33fac65-5e4b-469e-8485-27336e66df99",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "36eff6b7-4116-4f66-8d80-caf267867972",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "Meeting notes & action items",
+          "message": "={{$json.output}}",
+          "options": {}
+        },
+        "id": "bfe7094f-9679-4f8f-8561-624580b6b717",
+        "name": "Email Notes",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          760,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "be5b513e-8068-465e-8fca-11fdce3125af",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          980,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Transcript (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Email Notes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email Notes": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "2c7e237c-c2ec-4417-83be-9bd0e619d76d",
+    "name": "E24 — CRM Hygiene Bot",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 1
+              }
+            ]
+          }
+        },
+        "id": "f297dd46-f036-4879-8b06-3553bbbfaeb7",
+        "name": "Nightly 1am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Leads",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "d394f01d-b7c7-4dd5-8af1-54c6c3f04ce1",
+        "name": "Read Leads",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          440,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const rows=items.map(i=>i.json); const seen=new Set(); let dups=0; const gaps=[];\nfor(const r of rows){ const key=(r.email||'').toLowerCase(); if(key&&seen.has(key)){dups++;continue;} if(key)seen.add(key);\n  if(!r.name||!r.phone) gaps.push(r.email||'(no email)'); }\nreturn [{json:{total:rows.length, duplicates:dups, missingFields:gaps.length, gapList:gaps.slice(0,20).join(', ')}}];"
+        },
+        "id": "1b15d923-6181-4ddb-8e8f-edb84bf5ac4a",
+        "name": "Dedupe & Flag Gaps",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "=CRM hygiene — {{$json.duplicates}} dupes, {{$json.missingFields}} gaps",
+          "message": "=Nightly CRM check:\nRecords: {{$json.total}}\nDuplicates: {{$json.duplicates}}\nMissing fields: {{$json.missingFields}}\n\nNeeds attention: {{$json.gapList}}",
+          "options": {}
+        },
+        "id": "26343973-f243-4d08-8d49-b0bb9ca31d1a",
+        "name": "CRM Hygiene Report",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          880,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Nightly 1am": {
+        "main": [
+          [
+            {
+              "node": "Read Leads",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Leads": {
+        "main": [
+          [
+            {
+              "node": "Dedupe & Flag Gaps",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dedupe & Flag Gaps": {
+        "main": [
+          [
+            {
+              "node": "CRM Hygiene Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "012f6882-8560-421f-8fd3-48f268ab164a",
+    "name": "E25 — Scheduled Data Backup & Sync",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 2
+              }
+            ]
+          }
+        },
+        "id": "53daa757-608b-47df-869c-afe450745e4e",
+        "name": "Nightly 2am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Leads",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "aacdc8ae-9e39-43c6-8271-2af74d8bc822",
+        "name": "Read Leads",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          440,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const rows=items.map(i=>i.json); return rows.map(r=>({json:{...r, backupAt:new Date().toISOString()}}));"
+        },
+        "id": "51256d8b-a70b-4439-8864-9f7db401eb71",
+        "name": "Build Snapshot",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Backup",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "ecaca12b-f116-4128-8f5c-e6b7a58368f4",
+        "name": "Write Backup Tab",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          880,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Nightly 2am": {
+        "main": [
+          [
+            {
+              "node": "Read Leads",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Leads": {
+        "main": [
+          [
+            {
+              "node": "Build Snapshot",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Snapshot": {
+        "main": [
+          [
+            {
+              "node": "Write Backup Tab",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "b57d3270-3fac-4e1f-8c4e-1a3f11a688d0",
+    "name": "E26 — Internal Approval Router",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-approval",
+          "responseMode": "lastNode"
+        },
+        "id": "be9d2a22-45df-4d49-8e40-e3276af9bddd",
+        "name": "Approval Request (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "b76826fd-ea94-495f-8497-0ba442e3908f"
+      },
+      {
+        "parameters": {
+          "jsCode": "const b=$json.body||{}; const type=(b.type||'other').toLowerCase();\nconst map={expense:'FINANCE_APPROVER', content:'MARKETING_APPROVER', timeoff:'HR_APPROVER'};\nconst approverEnv=map[type]||'OWNER_EMAIL';\nreturn [{json:{...b, type, approverEnv}}];"
+        },
+        "id": "ca8d254e-ee54-4fbd-89b2-656eb01a419b",
+        "name": "Route by Type",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          460,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "message",
+          "operation": "post",
+          "select": "channel",
+          "channelId": {
+            "__rl": true,
+            "value": "={{$env.SLACK_ALERT_CHANNEL}}",
+            "mode": "id"
+          },
+          "text": "=:inbox_tray: *Approval needed* ({{$json.type}}) from {{$json.requester}}: {{$json.detail}}\nApprover group: {{$json.approverEnv}}",
+          "otherOptions": {}
+        },
+        "id": "0e190223-08a3-495a-8194-5f8ff8a901eb",
+        "name": "Notify Approver",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.3,
+        "position": [
+          700,
+          220
+        ],
+        "credentials": {
+          "slackApi": {
+            "id": "9450cf0a-bb9c-40ba-8e2d-936351ed589e",
+            "name": "LOADOUT Slack"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Approvals",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "4ef2755a-cb34-4e7b-87b6-e64576c772fe",
+        "name": "Log Decision Queue",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          700,
+          380
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Approval Request (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "Route by Type",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Route by Type": {
+        "main": [
+          [
+            {
+              "node": "Notify Approver",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Log Decision Queue",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  }
+]

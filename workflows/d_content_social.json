@@ -1,0 +1,990 @@
+[
+  {
+    "id": "da088e26-83da-4691-8f9b-44483ba46b14",
+    "name": "D16 — Social Scheduler & Publisher",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 8
+              }
+            ]
+          }
+        },
+        "id": "bcd408cb-69fd-48aa-89e7-7ab92147d9d8",
+        "name": "Daily 8am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CONTENT_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "ContentQueue",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "36340a9c-5f5a-4530-8f8b-ea9c3005fe9b",
+        "name": "Read Content Queue",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          420,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const today=new Date().toISOString().slice(0,10); return items.map(i=>i.json).filter(r=>(r.status||'queued')!=='posted' && (r.scheduledFor||'').slice(0,10)<=today).slice(0,1).map(r=>({json:r}));"
+        },
+        "id": "9ea51400-ff4e-4c6e-84de-78d4f2627ef4",
+        "name": "Pick Due Post",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "version": 2
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "id": "a54c40d0-c0be-4f9a-84fb-62d8c1b9ab24",
+                "leftValue": "={{$env.SOCIAL_AUTOPUBLISH}}",
+                "rightValue": "true",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "id": "b994f856-8dab-4dcb-81f4-73233466d18b",
+        "name": "Auto-publish on?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          860,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SOCIAL_PUBLISH_URL}}",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"text\": {{ JSON.stringify($json.text) }},\n  \"platform\": {{ JSON.stringify($json.platform || 'facebook') }}\n}",
+          "options": {}
+        },
+        "id": "c5c34e63-c07f-4d09-86f3-28d262c0e172",
+        "name": "Publish (opt-in)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1100,
+          220
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "=Post ready to approve — {{$json.platform || 'social'}}",
+          "message": "=Today's queued post (auto-publish is OFF, so paste it yourself or flip SOCIAL_AUTOPUBLISH to true):\n\n{{$json.text}}",
+          "options": {}
+        },
+        "id": "4b63275f-4fef-4610-87ad-f4743d623f46",
+        "name": "Send Draft for Approval",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1100,
+          400
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Daily 8am": {
+        "main": [
+          [
+            {
+              "node": "Read Content Queue",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Content Queue": {
+        "main": [
+          [
+            {
+              "node": "Pick Due Post",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Pick Due Post": {
+        "main": [
+          [
+            {
+              "node": "Auto-publish on?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Auto-publish on?": {
+        "main": [
+          [
+            {
+              "node": "Publish (opt-in)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Send Draft for Approval",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "1e9ad439-dd8c-4d70-8a78-9e77e8c1834b",
+    "name": "D17 — AI Content Repurposer",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-repurpose",
+          "responseMode": "lastNode"
+        },
+        "id": "03095f5f-9788-4a52-8ec2-4375aa2822cd",
+        "name": "Source Content (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "835dd436-56ad-4f56-8434-baf30fcc99cc"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Repurpose this:\n{{$json.body.content}}",
+          "options": {
+            "systemMessage": "=You repurpose one piece of content for {{$env.BUSINESS_NAME}} into: 3 short social posts, 1 LinkedIn post, 5 captions, 1 short email, and a 5-tweet thread. Keep the brand voice. Label each section clearly. Output plain text."
+          }
+        },
+        "id": "4df5acda-7c3b-4f71-8975-b08dbf2a0b54",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "0bc68533-3133-46bd-8ebd-c5dfe88cbe7a",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "Your content, repurposed",
+          "message": "=Here's your content turned into posts, captions, an email and a thread:\n\n{{$json.output}}",
+          "options": {}
+        },
+        "id": "5fd16373-79b8-49c8-845b-facd09c9c667",
+        "name": "Email Repurposed Pack",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          760,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "77674ee4-6e8d-4021-8477-f8306a55dc74",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          980,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Source Content (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Email Repurposed Pack",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email Repurposed Pack": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "b0a620c3-52b3-437c-805d-abf61710f39c",
+    "name": "D18 — Blog / SEO Article Drafter (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-blog",
+          "responseMode": "lastNode"
+        },
+        "id": "851d9472-7de2-4b43-8733-7825084cce01",
+        "name": "Topic (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "045a0721-6ba6-41b4-8fd6-c72113e62036"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Topic/keyword: {{$json.body.topic}}",
+          "options": {
+            "systemMessage": "=You draft SEO blog articles for {{$env.BUSINESS_NAME}}. From a keyword/topic, produce a ready-to-edit draft: SEO title, meta description, H2/H3 outline, then the full draft (~700 words), and a suggested slug. Natural keyword use, no stuffing. Output markdown."
+          }
+        },
+        "id": "7dac56fd-c71c-4e71-8338-cfe723792d78",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "be2c3747-e84d-4fd3-8288-fef2fa6313f4",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "=Draft article: {{$json.body?.topic || 'new post'}}",
+          "message": "=Your draft article is ready to edit:\n\n{{$json.output}}",
+          "options": {}
+        },
+        "id": "01ccc73e-22a1-4d00-8b4b-95ee8136da4e",
+        "name": "Email Draft Article",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          760,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "39b66320-8d2e-4513-8437-6879f0c093d8",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          980,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Topic (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Email Draft Article",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email Draft Article": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "542ee3e7-8142-4be0-8efa-753d6ba3c7c3",
+    "name": "D19 — Newsletter Builder",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "weeks",
+                "triggerAtDay": [
+                  5
+                ],
+                "triggerAtHour": 14
+              }
+            ]
+          }
+        },
+        "id": "4ec092d6-7998-4104-8eaf-cd9a1006ccde",
+        "name": "Weekly Fri 2pm",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CONTENT_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Updates",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "6762404e-bd4d-48fd-8b00-e85953a5fd82",
+        "name": "Read Week's Updates",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          440,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items_=items.map(i=>i.json); return [{json:{digest: items_.map(r=>'- '+(r.title||'')+': '+(r.note||'')).join('\\n') || 'No updates logged this week.'}}];"
+        },
+        "id": "988bfc29-d259-41cf-86c6-8b831f4d63b2",
+        "name": "Collect Items",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=This week's updates:\n{{$json.digest}}",
+          "options": {
+            "systemMessage": "=You write the weekly email newsletter for {{$env.BUSINESS_NAME}}. Turn the bullet list of updates into a friendly, scannable newsletter with a subject line, short intro, the highlights, and a sign-off. Output: first line = 'SUBJECT: ...', then the body."
+          }
+        },
+        "id": "bba8447c-742f-4c19-8bce-ede7f534f69d",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          880,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "d62217fc-87cc-4444-8943-786004805ded",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          840,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "Weekly newsletter — ready to review/send",
+          "message": "=Your newsletter draft (review, then send to your list):\n\n{{$json.output}}",
+          "options": {}
+        },
+        "id": "b690f9bc-fe63-440b-82e7-65799246b103",
+        "name": "Email Newsletter Draft",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1180,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Weekly Fri 2pm": {
+        "main": [
+          [
+            {
+              "node": "Read Week's Updates",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Week's Updates": {
+        "main": [
+          [
+            {
+              "node": "Collect Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Collect Items": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Email Newsletter Draft",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "61562843-65ce-4f80-8486-d03b15965079",
+    "name": "D20 — Competitor Ad Watcher (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 6
+              }
+            ]
+          }
+        },
+        "id": "0119e337-60a6-496d-8df1-a370c0f7e451",
+        "name": "Daily 6am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "https://graph.facebook.com/v19.0/ads_archive",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "access_token",
+                "value": "={{$env.META_ADS_TOKEN}}"
+              },
+              {
+                "name": "search_page_ids",
+                "value": "={{$env.COMPETITOR_PAGE_IDS}}"
+              },
+              {
+                "name": "ad_reached_countries",
+                "value": "={{$env.ADS_COUNTRY || 'AU'}}"
+              },
+              {
+                "name": "ad_active_status",
+                "value": "ACTIVE"
+              },
+              {
+                "name": "fields",
+                "value": "id,ad_creative_bodies,page_name,ad_delivery_start_time"
+              },
+              {
+                "name": "limit",
+                "value": "25"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "ba6d44d3-aeb4-470e-8184-65b0250431c9",
+        "name": "Meta Ads Library",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          420,
+          300
+        ],
+        "onError": "continueErrorOutput",
+        "retryOnFail": true
+      },
+      {
+        "parameters": {
+          "jsCode": "const data=($input.first().json.data)||[];\nconst since=Date.now()-24*3600000;\nconst recent=data.filter(a=>a.ad_delivery_start_time && Date.parse(a.ad_delivery_start_time)>=since);\nif(!recent.length) return [{json:{summary:'No new ad activity from tracked competitors in the last 24h.'}}];\nconst text=recent.map(a=>`[${a.page_name}] ${(a.ad_creative_bodies||['(no text)']).join(' / ')}`).join('\\n');\nreturn [{json:{ads:text, count:recent.length}}];"
+        },
+        "id": "21d9b2d3-2a16-4fe8-8c21-2bb22137301a",
+        "name": "New Ads Only",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "={{$json.ads || $json.summary}}",
+          "options": {
+            "systemMessage": "=You watch competitor ADS (not organic posts) for {{$env.BUSINESS_NAME}}. Given new competitor ads, write a tight TL;DR of what they're running and ONE concrete response idea we could test. If the input says no new activity, just relay that. Under 150 words."
+          }
+        },
+        "id": "f32c1638-bd90-4158-88e3-25c576fbd850",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          860,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "83f87886-c66f-4aff-8b0f-806cf1d6920c",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          820,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "Competitor ad watch — daily brief",
+          "message": "={{$json.output}}",
+          "options": {}
+        },
+        "id": "cc337b8d-ceb7-4ba0-8f88-27a8ad39de98",
+        "name": "Email Ad Brief",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1160,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "LOADOUT: competitor ad watcher couldn't reach Meta",
+          "message": "=The Meta Ads Library call failed today. Check META_ADS_TOKEN and COMPETITOR_PAGE_IDS.",
+          "options": {}
+        },
+        "id": "eeda7146-10c8-43cd-8072-df4dd4582577",
+        "name": "Ad API Error",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          640,
+          460
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Daily 6am": {
+        "main": [
+          [
+            {
+              "node": "Meta Ads Library",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Meta Ads Library": {
+        "main": [
+          [
+            {
+              "node": "New Ads Only",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Ad API Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "New Ads Only": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Email Ad Brief",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  }
+]

@@ -677,12 +677,330 @@ function buildReputation() {
   return wfs;
 }
 
+// ============================================================================
+// DEPT D — Content & Social (5)
+// ============================================================================
+function buildContentSocial() {
+  const wfs = [];
+
+  // D16 — Social Scheduler & Publisher (draft+approval default; auto-publish opt-in)
+  {
+    const wf = "d/social-publisher";
+    const trig = N(wf, "Daily 8am", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", triggerAtHour: 8 }] } }, 200, 300);
+    const read = N(wf, "Read Content Queue", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CONTENT_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "ContentQueue", mode: "name" }, options: {},
+    }, 420, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const due = N(wf, "Pick Due Post", "n8n-nodes-base.code", 2, {
+      jsCode: "const today=new Date().toISOString().slice(0,10); return items.map(i=>i.json).filter(r=>(r.status||'queued')!=='posted' && (r.scheduledFor||'').slice(0,10)<=today).slice(0,1).map(r=>({json:r}));",
+    }, 640, 300);
+    const gate = N(wf, "Auto-publish on?", "n8n-nodes-base.if", 2, {
+      conditions: { options: { caseSensitive: false, version: 2 }, combinator: "and", conditions: [
+        { id: id(wf + "/g"), leftValue: "={{$env.SOCIAL_AUTOPUBLISH}}", rightValue: "true", operator: { type: "string", operation: "equals" } },
+      ] },
+    }, 860, 300);
+    const publish = N(wf, "Publish (opt-in)", "n8n-nodes-base.httpRequest", 4.2, {
+      method: "POST", url: "={{$env.SOCIAL_PUBLISH_URL}}",
+      sendBody: true, specifyBody: "json",
+      jsonBody: "={\n  \"text\": {{ JSON.stringify($json.text) }},\n  \"platform\": {{ JSON.stringify($json.platform || 'facebook') }}\n}",
+      options: {},
+    }, 1100, 220, { onError: "continueRegularOutput" });
+    const approve = notifyOwnerEmail(wf, "Send Draft for Approval", 1100, 400,
+      "=Post ready to approve — {{$json.platform || 'social'}}",
+      "=Today's queued post (auto-publish is OFF, so paste it yourself or flip SOCIAL_AUTOPUBLISH to true):\n\n{{$json.text}}");
+    const conn = merge([
+      connect(["Daily 8am", "Read Content Queue", "Pick Due Post", "Auto-publish on?"]),
+      connect([], [
+        { from: "Auto-publish on?", to: "Publish (opt-in)", outputIndex: 0 },
+        { from: "Auto-publish on?", to: "Send Draft for Approval", outputIndex: 1 },
+      ]),
+    ]);
+    wfs.push(workflow("D16 — Social Scheduler & Publisher", [trig, read, due, gate, publish, approve], conn));
+  }
+
+  // D17 — AI Content Repurposer
+  {
+    const wf = "d/repurposer";
+    const trig = N(wf, "Source Content (Webhook)", "n8n-nodes-base.webhook", 2,
+      { httpMethod: "POST", path: "loadout-repurpose", responseMode: "lastNode" }, 220, 300, { webhookId: true });
+    const ai = aiAgent(wf, 460, 300,
+      "=You repurpose one piece of content for {{$env.BUSINESS_NAME}} into: 3 short social posts, 1 LinkedIn post, 5 captions, 1 short email, and a 5-tweet thread. Keep the brand voice. Label each section clearly. Output plain text.",
+      "=Repurpose this:\n{{$json.body.content}}");
+    const mail = notifyOwnerEmail(wf, "Email Repurposed Pack", 760, 300,
+      "Your content, repurposed",
+      "=Here's your content turned into posts, captions, an email and a thread:\n\n{{$json.output}}");
+    const log = logRun(wf, 980, 300);
+    const conn = merge([
+      connect(["Source Content (Webhook)", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Email Repurposed Pack", "Log Run"]),
+    ]);
+    wfs.push(workflow("D17 — AI Content Repurposer", [trig, ...ai.nodes, mail, log], conn));
+  }
+
+  // D18 — Blog / SEO Article Drafter (AI)
+  {
+    const wf = "d/blog-drafter";
+    const trig = N(wf, "Topic (Webhook)", "n8n-nodes-base.webhook", 2,
+      { httpMethod: "POST", path: "loadout-blog", responseMode: "lastNode" }, 220, 300, { webhookId: true });
+    const ai = aiAgent(wf, 460, 300,
+      "=You draft SEO blog articles for {{$env.BUSINESS_NAME}}. From a keyword/topic, produce a ready-to-edit draft: SEO title, meta description, H2/H3 outline, then the full draft (~700 words), and a suggested slug. Natural keyword use, no stuffing. Output markdown.",
+      "=Topic/keyword: {{$json.body.topic}}");
+    const mail = notifyOwnerEmail(wf, "Email Draft Article", 760, 300,
+      "=Draft article: {{$json.body?.topic || 'new post'}}",
+      "=Your draft article is ready to edit:\n\n{{$json.output}}");
+    const log = logRun(wf, 980, 300);
+    const conn = merge([
+      connect(["Topic (Webhook)", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Email Draft Article", "Log Run"]),
+    ]);
+    wfs.push(workflow("D18 — Blog / SEO Article Drafter (AI)", [trig, ...ai.nodes, mail, log], conn));
+  }
+
+  // D19 — Newsletter Builder
+  {
+    const wf = "d/newsletter";
+    const trig = N(wf, "Weekly Fri 2pm", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "weeks", triggerAtDay: [5], triggerAtHour: 14 }] } }, 220, 300);
+    const read = N(wf, "Read Week's Updates", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CONTENT_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Updates", mode: "name" }, options: {},
+    }, 440, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const collect = N(wf, "Collect Items", "n8n-nodes-base.code", 2, {
+      jsCode: "const items_=items.map(i=>i.json); return [{json:{digest: items_.map(r=>'- '+(r.title||'')+': '+(r.note||'')).join('\\n') || 'No updates logged this week.'}}];",
+    }, 660, 300);
+    const ai = aiAgent(wf, 880, 300,
+      "=You write the weekly email newsletter for {{$env.BUSINESS_NAME}}. Turn the bullet list of updates into a friendly, scannable newsletter with a subject line, short intro, the highlights, and a sign-off. Output: first line = 'SUBJECT: ...', then the body.",
+      "=This week's updates:\n{{$json.digest}}");
+    const draft = notifyOwnerEmail(wf, "Email Newsletter Draft", 1180, 300,
+      "Weekly newsletter — ready to review/send",
+      "=Your newsletter draft (review, then send to your list):\n\n{{$json.output}}");
+    const conn = merge([
+      connect(["Weekly Fri 2pm", "Read Week's Updates", "Collect Items", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Email Newsletter Draft"]),
+    ]);
+    wfs.push(workflow("D19 — Newsletter Builder", [trig, read, collect, ...ai.nodes, draft], conn));
+  }
+
+  // D20 — Competitor Ad Watcher (AI) — Meta Ads Library, tracks ADS not organic
+  {
+    const wf = "d/ad-watcher";
+    const trig = N(wf, "Daily 6am", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", triggerAtHour: 6 }] } }, 200, 300);
+    const fetch = N(wf, "Meta Ads Library", "n8n-nodes-base.httpRequest", 4.2, {
+      method: "GET", url: "https://graph.facebook.com/v19.0/ads_archive",
+      sendQuery: true, queryParameters: { parameters: [
+        { name: "access_token", value: "={{$env.META_ADS_TOKEN}}" },
+        { name: "search_page_ids", value: "={{$env.COMPETITOR_PAGE_IDS}}" },
+        { name: "ad_reached_countries", value: "={{$env.ADS_COUNTRY || 'AU'}}" },
+        { name: "ad_active_status", value: "ACTIVE" },
+        { name: "fields", value: "id,ad_creative_bodies,page_name,ad_delivery_start_time" },
+        { name: "limit", value: "25" },
+      ] },
+      options: {},
+    }, 420, 300, { onError: "continueErrorOutput", retryOnFail: true });
+    const fresh = N(wf, "New Ads Only", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const data=($input.first().json.data)||[];\n" +
+        "const since=Date.now()-24*3600000;\n" +
+        "const recent=data.filter(a=>a.ad_delivery_start_time && Date.parse(a.ad_delivery_start_time)>=since);\n" +
+        "if(!recent.length) return [{json:{summary:'No new ad activity from tracked competitors in the last 24h.'}}];\n" +
+        "const text=recent.map(a=>`[${a.page_name}] ${(a.ad_creative_bodies||['(no text)']).join(' / ')}`).join('\\n');\n" +
+        "return [{json:{ads:text, count:recent.length}}];",
+    }, 640, 300);
+    const ai = aiAgent(wf, 860, 300,
+      "=You watch competitor ADS (not organic posts) for {{$env.BUSINESS_NAME}}. Given new competitor ads, write a tight TL;DR of what they're running and ONE concrete response idea we could test. If the input says no new activity, just relay that. Under 150 words.",
+      "={{$json.ads || $json.summary}}");
+    const mail = notifyOwnerEmail(wf, "Email Ad Brief", 1160, 300,
+      "Competitor ad watch — daily brief",
+      "={{$json.output}}");
+    const errlog = notifyOwnerEmail(wf, "Ad API Error", 640, 460,
+      "LOADOUT: competitor ad watcher couldn't reach Meta",
+      "=The Meta Ads Library call failed today. Check META_ADS_TOKEN and COMPETITOR_PAGE_IDS.");
+    const conn = merge([
+      connect(["Daily 6am", "Meta Ads Library"]),
+      connect([], [
+        { from: "Meta Ads Library", to: "New Ads Only", outputIndex: 0 },
+        { from: "Meta Ads Library", to: "Ad API Error", outputIndex: 1 },
+      ]),
+      connect(["New Ads Only", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Email Ad Brief"]),
+    ]);
+    wfs.push(workflow("D20 — Competitor Ad Watcher (AI)", [trig, fetch, fresh, ...ai.nodes, mail, errlog], conn));
+  }
+
+  return wfs;
+}
+
+// ============================================================================
+// DEPT E — Operations & Admin (6)
+// ============================================================================
+function buildOperations() {
+  const wfs = [];
+
+  // E21 — Invoice & Receipt Processor (AI)
+  {
+    const wf = "e/invoice";
+    const trig = N(wf, "Invoice In (Webhook)", "n8n-nodes-base.webhook", 2,
+      { httpMethod: "POST", path: "loadout-invoice", responseMode: "lastNode" }, 220, 300, { webhookId: true });
+    const ai = aiAgent(wf, 460, 300,
+      "=You extract structured data from an invoice/receipt. Output ONLY valid JSON: {\"vendor\":\"\",\"date\":\"YYYY-MM-DD\",\"total\":0,\"currency\":\"\",\"category\":\"\",\"invoiceNumber\":\"\"}. If a field is missing, use empty string or 0.",
+      "=Invoice text:\n{{$json.body.text}}");
+    const parse = N(wf, "Parse JSON", "n8n-nodes-base.code", 2, {
+      jsCode: "let o={}; try{o=JSON.parse($json.output)}catch(e){o={vendor:'',date:'',total:0,currency:'',category:'',invoiceNumber:'',raw:$json.output}} return [{json:o}];",
+    }, 760, 300);
+    const log = N(wf, "Log to Accounting Sheet", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "append",
+      documentId: { __rl: true, value: "={{$env.ACCOUNTING_SHEET_ID || $env.LOADOUT_LOG_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Invoices", mode: "name" },
+      columns: { mappingMode: "autoMapInputData", value: {} }, options: {},
+    }, 1000, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const conn = merge([
+      connect(["Invoice In (Webhook)", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Parse JSON", "Log to Accounting Sheet"]),
+    ]);
+    wfs.push(workflow("E21 — Invoice & Receipt Processor (AI)", [trig, ...ai.nodes, parse, log], conn));
+  }
+
+  // E22 — Document & Contract Summarizer (AI)
+  {
+    const wf = "e/doc-summarizer";
+    const trig = N(wf, "Document (Webhook)", "n8n-nodes-base.webhook", 2,
+      { httpMethod: "POST", path: "loadout-summarize-doc", responseMode: "lastNode" }, 220, 300, { webhookId: true });
+    const ai = aiAgent(wf, 460, 300,
+      "=You summarise documents/contracts for a busy owner. Output: a 3-bullet TL;DR, then KEY TERMS (parties, obligations, payment), then IMPORTANT DATES (with the date), then any RISKS to check with a professional. Plain English.",
+      "=Document:\n{{$json.body.text}}");
+    const mail = notifyOwnerEmail(wf, "Email Summary", 760, 300,
+      "Document summary ready",
+      "={{$json.output}}\n\n(Not legal advice — check anything important with a professional.)");
+    const log = logRun(wf, 980, 300);
+    const conn = merge([
+      connect(["Document (Webhook)", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Email Summary", "Log Run"]),
+    ]);
+    wfs.push(workflow("E22 — Document & Contract Summarizer (AI)", [trig, ...ai.nodes, mail, log], conn));
+  }
+
+  // E23 — Meeting Notes & Action Items (AI)
+  {
+    const wf = "e/meeting-notes";
+    const trig = N(wf, "Transcript (Webhook)", "n8n-nodes-base.webhook", 2,
+      { httpMethod: "POST", path: "loadout-meeting-notes", responseMode: "lastNode" }, 220, 300, { webhookId: true });
+    const ai = aiAgent(wf, 460, 300,
+      "=You turn a meeting transcript into: a short SUMMARY, DECISIONS made, and ACTION ITEMS as a checklist with owner + due date where stated. Plain English, scannable.",
+      "=Transcript:\n{{$json.body.transcript}}");
+    const mail = notifyOwnerEmail(wf, "Email Notes", 760, 300,
+      "Meeting notes & action items",
+      "={{$json.output}}");
+    const log = logRun(wf, 980, 300);
+    const conn = merge([
+      connect(["Transcript (Webhook)", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Email Notes", "Log Run"]),
+    ]);
+    wfs.push(workflow("E23 — Meeting Notes & Action Items (AI)", [trig, ...ai.nodes, mail, log], conn));
+  }
+
+  // E24 — CRM Hygiene Bot
+  {
+    const wf = "e/crm-hygiene";
+    const trig = N(wf, "Nightly 1am", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", triggerAtHour: 1 }] } }, 220, 300);
+    const read = N(wf, "Read Leads", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CRM_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Leads", mode: "name" }, options: {},
+    }, 440, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const clean = N(wf, "Dedupe & Flag Gaps", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const rows=items.map(i=>i.json); const seen=new Set(); let dups=0; const gaps=[];\n" +
+        "for(const r of rows){ const key=(r.email||'').toLowerCase(); if(key&&seen.has(key)){dups++;continue;} if(key)seen.add(key);\n" +
+        "  if(!r.name||!r.phone) gaps.push(r.email||'(no email)'); }\n" +
+        "return [{json:{total:rows.length, duplicates:dups, missingFields:gaps.length, gapList:gaps.slice(0,20).join(', ')}}];",
+    }, 660, 300);
+    const mail = notifyOwnerEmail(wf, "CRM Hygiene Report", 880, 300,
+      "=CRM hygiene — {{$json.duplicates}} dupes, {{$json.missingFields}} gaps",
+      "=Nightly CRM check:\nRecords: {{$json.total}}\nDuplicates: {{$json.duplicates}}\nMissing fields: {{$json.missingFields}}\n\nNeeds attention: {{$json.gapList}}");
+    wfs.push(workflow("E24 — CRM Hygiene Bot",
+      [trig, read, clean, mail],
+      connect(["Nightly 1am", "Read Leads", "Dedupe & Flag Gaps", "CRM Hygiene Report"])));
+  }
+
+  // E25 — Scheduled Data Backup & Sync
+  {
+    const wf = "e/backup";
+    const trig = N(wf, "Nightly 2am", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", triggerAtHour: 2 }] } }, 220, 300);
+    const read = N(wf, "Read Leads", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CRM_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Leads", mode: "name" }, options: {},
+    }, 440, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const snap = N(wf, "Build Snapshot", "n8n-nodes-base.code", 2, {
+      jsCode: "const rows=items.map(i=>i.json); return rows.map(r=>({json:{...r, backupAt:new Date().toISOString()}}));",
+    }, 660, 300);
+    const write = N(wf, "Write Backup Tab", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "append",
+      documentId: { __rl: true, value: "={{$env.LOADOUT_LOG_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Backup", mode: "name" },
+      columns: { mappingMode: "autoMapInputData", value: {} }, options: {},
+    }, 880, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    wfs.push(workflow("E25 — Scheduled Data Backup & Sync",
+      [trig, read, snap, write],
+      connect(["Nightly 2am", "Read Leads", "Build Snapshot", "Write Backup Tab"])));
+  }
+
+  // E26 — Internal Approval Router
+  {
+    const wf = "e/approval-router";
+    const trig = N(wf, "Approval Request (Webhook)", "n8n-nodes-base.webhook", 2,
+      { httpMethod: "POST", path: "loadout-approval", responseMode: "lastNode" }, 220, 300, { webhookId: true });
+    const route = N(wf, "Route by Type", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const b=$json.body||{}; const type=(b.type||'other').toLowerCase();\n" +
+        "const map={expense:'FINANCE_APPROVER', content:'MARKETING_APPROVER', timeoff:'HR_APPROVER'};\n" +
+        "const approverEnv=map[type]||'OWNER_EMAIL';\n" +
+        "return [{json:{...b, type, approverEnv}}];",
+    }, 460, 300);
+    const slack = N(wf, "Notify Approver", "n8n-nodes-base.slack", 2.3, {
+      resource: "message", operation: "post", select: "channel",
+      channelId: { __rl: true, value: "={{$env.SLACK_ALERT_CHANNEL}}", mode: "id" },
+      text: "=:inbox_tray: *Approval needed* ({{$json.type}}) from {{$json.requester}}: {{$json.detail}}\nApprover group: {{$json.approverEnv}}",
+      otherOptions: {},
+    }, 700, 220, { credentials: CRED.slack, onError: "continueRegularOutput" });
+    const log = N(wf, "Log Decision Queue", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "append",
+      documentId: { __rl: true, value: "={{$env.LOADOUT_LOG_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Approvals", mode: "name" },
+      columns: { mappingMode: "autoMapInputData", value: {} }, options: {},
+    }, 700, 380, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const conn = connect([], [
+      { from: "Approval Request (Webhook)", to: "Route by Type" },
+      { from: "Route by Type", to: "Notify Approver" },
+      { from: "Route by Type", to: "Log Decision Queue" },
+    ]);
+    wfs.push(workflow("E26 — Internal Approval Router", [trig, route, slack, log], conn));
+  }
+
+  return wfs;
+}
+
 // ---- emit ------------------------------------------------------------------
 const FILES = {
   "infra.json": buildInfra(),
   "a_leadgen_sales.json": buildLeadGen(),
   "b_customer_service.json": buildCustomerService(),
   "c_reputation_reviews.json": buildReputation(),
+  "d_content_social.json": buildContentSocial(),
+  "e_operations_admin.json": buildOperations(),
 };
 
 let total = 0;
