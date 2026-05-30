@@ -1,0 +1,1435 @@
+[
+  {
+    "id": "1178b31d-5f72-43e2-812a-e11c21f44e43",
+    "name": "A1 — Lead Capture & CRM Router",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-lead-capture",
+          "responseMode": "lastNode"
+        },
+        "id": "974b782f-090e-4aa6-81e2-b3dc8a512ec0",
+        "name": "New Lead (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          240,
+          300
+        ],
+        "webhookId": "a41fc22a-78e2-433e-8c5a-3ee8e83aa3ea"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "8840216e-c018-4a76-8a8b-f0fa66ab8f33",
+                "name": "name",
+                "value": "={{$json.body.name || $json.name || ''}}",
+                "type": "string"
+              },
+              {
+                "id": "56e6c114-4e59-424d-870b-38d698d49c30",
+                "name": "email",
+                "value": "={{$json.body.email || $json.email || ''}}",
+                "type": "string"
+              },
+              {
+                "id": "b2e2ac94-9c99-4124-8a67-660458b27fd5",
+                "name": "phone",
+                "value": "={{$json.body.phone || $json.phone || ''}}",
+                "type": "string"
+              },
+              {
+                "id": "99f415f9-8af5-44ab-8a79-f84da01be639",
+                "name": "source",
+                "value": "={{$json.body.source || 'web'}}",
+                "type": "string"
+              },
+              {
+                "id": "87a192c3-f10d-4adb-815c-aaeecc4c2b5b",
+                "name": "time",
+                "value": "={{$now.toISO()}}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "4de42df0-d376-4ad8-8553-22e7b9bf615c",
+        "name": "Normalize Fields",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          460,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Leads",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "c3d5bfb6-53a0-4169-8592-4a8125676946",
+        "name": "Add to CRM Sheet",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          680,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "=New lead: {{$json.name || 'unknown'}}",
+          "message": "=New {{$json.source}} lead just came in:\n\nName: {{$json.name}}\nEmail: {{$json.email}}\nPhone: {{$json.phone}}\nTime: {{$json.time}}",
+          "options": {}
+        },
+        "id": "b44eacac-a524-4a9e-8dd7-3fc5173b77c2",
+        "name": "Notify Owner",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          900,
+          220
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "LOADOUT: lead-capture could not write to CRM",
+          "message": "=A lead came in but the CRM write failed. Lead: {{$json.name}} / {{$json.email}}. Check your Google Sheets connection.",
+          "options": {}
+        },
+        "id": "bb5c9e8e-fda0-45a5-83bc-2d59b0c0973d",
+        "name": "CRM Error Alert",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          900,
+          400
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "New Lead (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "Normalize Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Fields": {
+        "main": [
+          [
+            {
+              "node": "Add to CRM Sheet",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Add to CRM Sheet": {
+        "main": [
+          [
+            {
+              "node": "Notify Owner",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "CRM Error Alert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "edd54256-21bf-49ff-8cf0-78733bb43a6b",
+    "name": "A2 — Instant Lead Responder (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-instant-responder",
+          "responseMode": "lastNode"
+        },
+        "id": "9efa3c55-4836-47bf-8feb-1af91d15f0dd",
+        "name": "New Lead (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "9a0af260-5ba6-4e9a-8342-6de4f113a170"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=A new lead just enquired. Details:\nName: {{$json.body.name}}\nMessage: {{$json.body.message}}\nWrite their reply now.",
+          "options": {
+            "systemMessage": "=You are the friendly first responder for {{$env.BUSINESS_NAME}}. Qualify the lead in one short, warm email under 120 words. Acknowledge their enquiry, ask 1-2 qualifying questions, and invite them to book using this link: {{$env.BOOKING_LINK}}. Sign off as the {{$env.BUSINESS_NAME}} team. Output ONLY the email body."
+          }
+        },
+        "id": "9ae4a9b2-a278-4042-801e-eae10af0efac",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "142484b1-3507-4387-887a-908ca1d77ec1",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$('New Lead (Webhook)').item.json.body.email}}",
+          "subject": "=Thanks for reaching out to {{$env.BUSINESS_NAME}}",
+          "message": "={{$json.output}}",
+          "options": {}
+        },
+        "id": "4db41304-b257-4230-88ca-466296609775",
+        "name": "Email the Lead",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          760,
+          220
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "15e915a0-0600-4912-89c8-dbffbc53e41a",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          980,
+          220
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "New Lead (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Email the Lead",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email the Lead": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "8f743797-2a91-429c-872a-34b711df049d",
+    "name": "A3 — Missed-Call Text-Back",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-missed-call",
+          "responseMode": "lastNode"
+        },
+        "id": "baa70e4a-adba-46f7-8d28-42fa3e132ee7",
+        "name": "Missed Call (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          240,
+          300
+        ],
+        "webhookId": "4a43ffaf-34cf-4a7a-8067-8eac4af61166"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "version": 2
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "id": "ea31295e-e266-450d-84c8-c850b00943f0",
+                "leftValue": "={{$json.body.status}}",
+                "rightValue": "no-answer",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "id": "f198096c-18bb-4a53-8982-6db665120dc7",
+        "name": "Is Missed?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          460,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "from": "={{$env.TWILIO_FROM}}",
+          "to": "={{$json.body.from}}",
+          "message": "=Sorry we missed your call to {{$env.BUSINESS_NAME}}! Reply here and we'll help right away."
+        },
+        "id": "a438d6cf-3b98-411d-853d-1852fdfa1c4d",
+        "name": "Text Back",
+        "type": "n8n-nodes-base.twilio",
+        "typeVersion": 1,
+        "position": [
+          700,
+          220
+        ],
+        "credentials": {
+          "twilioApi": {
+            "id": "5c80b786-dc8b-413b-8818-9d666845d8c1",
+            "name": "LOADOUT Twilio"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "fa26324b-c265-4ea1-8e27-6100ca5c4e5c",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          920,
+          220
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Missed Call (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "Is Missed?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Is Missed?": {
+        "main": [
+          [
+            {
+              "node": "Text Back",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Text Back": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "630475a4-6bf1-448c-80d0-284873ca2e95",
+    "name": "A4 — Quote & Proposal Generator (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "formTitle": "Request a Quote",
+          "path": "loadout-quote",
+          "formFields": {
+            "values": [
+              {
+                "fieldLabel": "Your name",
+                "requiredField": true
+              },
+              {
+                "fieldLabel": "Email",
+                "requiredField": true
+              },
+              {
+                "fieldLabel": "What do you need?",
+                "fieldType": "textarea",
+                "requiredField": true
+              }
+            ]
+          }
+        },
+        "id": "ac407f01-ab9c-4a8d-8b02-4a96f6c29d85",
+        "name": "Quote Request (Form)",
+        "type": "n8n-nodes-base.formTrigger",
+        "typeVersion": 2.2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "a0c84b57-b412-46a9-88f4-1317c1d50793"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Build a quote for this request:\nName: {{$json['Your name']}}\nNeed: {{$json['What do you need?']}}",
+          "options": {
+            "systemMessage": "=You are a quoting assistant for {{$env.BUSINESS_NAME}}. Produce a clean, branded quote/proposal in plain text: a short intro, an itemised scope with indicative pricing where reasonable (clearly marked 'indicative'), and clear next steps. Stay professional and concise. Use {{$env.BUSINESS_NAME}} as the provider."
+          }
+        },
+        "id": "29f66bfe-0fcd-4428-8e88-8f01fd244a30",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "24ec1676-589e-4d74-838d-28ee67968502",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$('Quote Request (Form)').item.json['Email']}}",
+          "subject": "=Your quote from {{$env.BUSINESS_NAME}}",
+          "message": "={{$json.output}}",
+          "options": {}
+        },
+        "id": "020c8043-06ba-4034-8a69-52eae54e6232",
+        "name": "Email Quote",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          760,
+          220
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "12188fd9-9139-4054-8773-34a5189fc0ec",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          980,
+          220
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Quote Request (Form)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Email Quote",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email Quote": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "99c1d104-fd94-4678-82be-54bee26c367d",
+    "name": "A5 — Cold Outreach Engine",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 9
+              }
+            ]
+          }
+        },
+        "id": "7e69ce0f-6d8b-426a-8ee6-b82755694b01",
+        "name": "Daily 9am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.apollo.io/v1/mixed_people/search",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Api-Key",
+                "value": "={{$env.APOLLO_API_KEY}}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"page\": 1,\n  \"per_page\": {{$env.COLD_LEADS_PER_DAY || 10}},\n  \"person_titles\": {{$env.ICP_TITLES_JSON || '[\"owner\"]'}}\n}",
+          "options": {}
+        },
+        "id": "ca9bf94e-ccfb-4ce0-8705-5846efa7ef04",
+        "name": "Find Leads (Apollo)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          420,
+          300
+        ],
+        "onError": "continueErrorOutput",
+        "retryOnFail": true
+      },
+      {
+        "parameters": {
+          "jsCode": "const people = ($input.first().json.people || []).filter(p => p.email);\nconst seen = new Set();\nconst out = [];\nfor (const p of people) { if (seen.has(p.email)) continue; seen.add(p.email);\n  out.push({ json: { name: p.first_name||'', email: p.email, title: p.title||'', company: (p.organization&&p.organization.name)||'' } }); }\nreturn out;"
+        },
+        "id": "cbebaa67-4b09-4bf5-8d2a-16c566644b11",
+        "name": "Dedupe & Pick",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          220
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Prospect:\nName: {{$json.name}}\nTitle: {{$json.title}}\nCompany: {{$json.company}}\nWrite their email.",
+          "options": {
+            "systemMessage": "=You write cold outreach for {{$env.BUSINESS_NAME}}. Write a personalised email UNDER 150 words to the prospect. One specific, relevant hook, one clear soft CTA. No spam, no hype. Include an unsubscribe line: 'Reply STOP to opt out.' Output ONLY the email body."
+          }
+        },
+        "id": "57244a0c-d63c-4817-8789-9e048b52dd5c",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          860,
+          220
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "36b1892c-d2ce-4fca-8ef5-aec7f31accde",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          820,
+          400
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$('Dedupe & Pick').item.json.email}}",
+          "subject": "=Quick idea for {{$('Dedupe & Pick').item.json.company}}",
+          "message": "={{$json.output}}",
+          "options": {}
+        },
+        "id": "3c0d66b6-6ec0-4852-82ac-fd2eaafecab2",
+        "name": "Send Cold Email",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1160,
+          220
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "54457e4a-aba0-489d-82a6-fad6a65f539a",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          1380,
+          220
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "LOADOUT: cold-outreach lead source failed",
+          "message": "=Apollo/Hunter lookup failed today. Check APOLLO_API_KEY. No emails were sent.",
+          "options": {}
+        },
+        "id": "683941de-15fd-4925-8524-b6316b2772b7",
+        "name": "Lead Source Error",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          640,
+          420
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Daily 9am": {
+        "main": [
+          [
+            {
+              "node": "Find Leads (Apollo)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Leads (Apollo)": {
+        "main": [
+          [
+            {
+              "node": "Dedupe & Pick",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Lead Source Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dedupe & Pick": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Send Cold Email",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Cold Email": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "5fa458f6-4a22-4eef-878f-c45114e9262e",
+    "name": "A6 — Lead Nurture Sequencer",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 10
+              }
+            ]
+          }
+        },
+        "id": "b6782a42-2150-44ab-8bd0-5b2a2bc84f47",
+        "name": "Daily 10am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Leads",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "2c40e4a6-5150-4a0d-8ca6-3bf19ffe42e0",
+        "name": "Read Open Leads",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          440,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const now = Date.now();\nconst rows = items.map(i => i.json).filter(r => (r.status||'').toLowerCase() !== 'converted');\nconst out = [];\nfor (const r of rows) {\n  const step = parseInt(r.nurtureStep||'0', 10);\n  const last = r.lastTouch ? Date.parse(r.lastTouch) : 0;\n  const dueAfter = [0, 2, 5, 9][step] || null; // days between touches\n  if (dueAfter === null) continue;\n  if (!last || (now - last) / 86400000 >= dueAfter) out.push({ json: { ...r, nextStep: step + 1 } });\n}\nreturn out;"
+        },
+        "id": "afe87f1d-684f-4236-8ee3-047a31f38321",
+        "name": "Pick Due Steps",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Lead: {{$json.name}} ({{$json.email}}). Step: {{$json.nextStep}}. Write the follow-up.",
+          "options": {
+            "systemMessage": "=You nurture un-converted leads for {{$env.BUSINESS_NAME}}. Write a short, helpful follow-up email (under 100 words) appropriate to nurture step {{$json.nextStep}}. Be warm, add one piece of value, soft CTA to reply or book {{$env.BOOKING_LINK}}. Output ONLY the email body."
+          }
+        },
+        "id": "3b3fb18a-6597-4fda-839b-2469a60532ae",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          880,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "9ff4a7fb-0b28-497e-8a25-3f3cb5e21595",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          840,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$('Pick Due Steps').item.json.email}}",
+          "subject": "=A quick follow-up from {{$env.BUSINESS_NAME}}",
+          "message": "={{$json.output}}",
+          "options": {}
+        },
+        "id": "c5a8ad8a-1431-4109-80fb-39d7fa7e074d",
+        "name": "Send Follow-up",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1180,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "ab33ef19-4f86-4e6f-871c-e976872a9892",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          1400,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Daily 10am": {
+        "main": [
+          [
+            {
+              "node": "Read Open Leads",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Open Leads": {
+        "main": [
+          [
+            {
+              "node": "Pick Due Steps",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Pick Due Steps": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Send Follow-up",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Follow-up": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "92bc6ff9-883f-4b7e-8be3-732d6a46226a",
+    "name": "A7 — Appointment Booking & Reminders",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours"
+              }
+            ]
+          }
+        },
+        "id": "4525c9fe-7480-4ce8-80c9-13b21e9148ba",
+        "name": "Hourly",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Appointments",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "cd708b94-4b8e-41b1-89cd-831441e4aa61",
+        "name": "Read Appointments",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          440,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const now = Date.now();\nconst out = [];\nfor (const i of items) { const r = i.json;\n  if ((r.status||'') === 'no-show') { out.push({ json: { ...r, action: 'rebook' } }); continue; }\n  const start = r.startsAt ? Date.parse(r.startsAt) : 0;\n  const hrs = (start - now) / 3600000;\n  if (hrs > 23 && hrs <= 24 && r.reminded24 !== 'yes') out.push({ json: { ...r, action: 'remind' } });\n}\nreturn out;"
+        },
+        "id": "3649c5ca-1cb9-4704-8427-9dc9291c7bf6",
+        "name": "Reminders Due",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "from": "={{$env.TWILIO_FROM}}",
+          "to": "={{$json.phone}}",
+          "message": "=Reminder: your appointment with {{$env.BUSINESS_NAME}} is {{$json.startsAt}}. Reply to reschedule."
+        },
+        "id": "1769567e-ac86-43c9-848a-afa46739ac59",
+        "name": "Send Reminder SMS",
+        "type": "n8n-nodes-base.twilio",
+        "typeVersion": 1,
+        "position": [
+          880,
+          220
+        ],
+        "credentials": {
+          "twilioApi": {
+            "id": "5c80b786-dc8b-413b-8818-9d666845d8c1",
+            "name": "LOADOUT Twilio"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "=Appointment reminder — {{$json.name}}",
+          "message": "=Reminder sent for {{$json.name}} at {{$json.startsAt}} (action: {{$json.action}}).",
+          "options": {}
+        },
+        "id": "bbec120b-a293-49bf-88e4-e591470ca486",
+        "name": "Email Reminder",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          880,
+          380
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "84b1b054-ae84-4d42-8d99-04c14ec96d5d",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          1120,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Hourly": {
+        "main": [
+          [
+            {
+              "node": "Read Appointments",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Appointments": {
+        "main": [
+          [
+            {
+              "node": "Reminders Due",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reminders Due": {
+        "main": [
+          [
+            {
+              "node": "Send Reminder SMS",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Email Reminder",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Reminder SMS": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  }
+]

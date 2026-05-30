@@ -1,0 +1,536 @@
+[
+  {
+    "id": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d",
+    "name": "LOADOUT — Error Handler",
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "2d66eca1-1887-4804-85ad-490ea224451b",
+        "name": "On Workflow Error",
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          260,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "fa6cb1cd-1d94-4640-82b4-43c5fef27867",
+                "name": "workflow",
+                "value": "={{$json.workflow?.name || 'unknown'}}",
+                "type": "string"
+              },
+              {
+                "id": "1c58c8e4-2813-466b-8240-869b42dd0753",
+                "name": "error",
+                "value": "={{$json.execution?.error?.message || $json.error?.message || 'unknown'}}",
+                "type": "string"
+              },
+              {
+                "id": "5c31c83b-3ef0-4459-8199-31446333f998",
+                "name": "time",
+                "value": "={{$now.toISO()}}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "fd4a8dc9-86eb-4bfa-8ed8-1667c1057d9c",
+        "name": "Format Error",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          480,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "message",
+          "operation": "post",
+          "select": "channel",
+          "channelId": {
+            "__rl": true,
+            "value": "={{$env.SLACK_ALERT_CHANNEL}}",
+            "mode": "id"
+          },
+          "text": "=:rotating_light: *LOADOUT error* in *{{$json.workflow}}*\n{{$json.error}}\n_{{$json.time}}_",
+          "otherOptions": {}
+        },
+        "id": "2bba7519-d908-4e72-89a9-0697238ae933",
+        "name": "Alert Owner (Slack)",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.3,
+        "position": [
+          700,
+          220
+        ],
+        "credentials": {
+          "slackApi": {
+            "id": "9450cf0a-bb9c-40ba-8e2d-936351ed589e",
+            "name": "LOADOUT Slack"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Errors",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "c246ca06-d89c-452a-8ad7-dbf498d1425b",
+        "name": "Log Error",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          700,
+          380
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "On Workflow Error": {
+        "main": [
+          [
+            {
+              "node": "Format Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Error": {
+        "main": [
+          [
+            {
+              "node": "Alert Owner (Slack)",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Log Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "active": false
+  },
+  {
+    "id": "6a24623c-9293-4d58-8f21-85264d476955",
+    "name": "LOADOUT — Cost & Usage Tracker",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 23
+              }
+            ]
+          }
+        },
+        "id": "d890decc-5b97-4968-89e7-47a1f601b0c1",
+        "name": "Nightly 11pm",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          260,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "3954e6b4-3268-4a81-8437-c250bb57f9ad",
+        "name": "Read Runs",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          480,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "// rough daily roll-up. AI cost ~ tokens; here we count AI runs * avg cents.\nconst rows = items.map(i => i.json);\nconst today = new Date().toISOString().slice(0,10);\nconst todays = rows.filter(r => (r.time||'').slice(0,10) === today);\nconst aiRuns = todays.filter(r => (r.kind||'').includes('ai')).length;\nconst estUsd = (aiRuns * 0.03).toFixed(2); // ~3c per AI run, adjust to taste\nreturn [{ json: { date: today, totalRuns: todays.length, aiRuns, estUsd } }];"
+        },
+        "id": "68a8b198-3cb1-4c85-8b28-e0f0208b8001",
+        "name": "Estimate Cost",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          700,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "=LOADOUT cost estimate — {{$json.date}}",
+          "message": "=Runs today: {{$json.totalRuns}} (AI: {{$json.aiRuns}})\nEstimated AI spend today: ~${{$json.estUsd}}\n\nThis is an estimate from your run log. Your real bill is on console.anthropic.com.",
+          "options": {}
+        },
+        "id": "b5fbb14a-3b50-431d-8fb0-7e703bdd7c78",
+        "name": "Email Cost Digest",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          920,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Nightly 11pm": {
+        "main": [
+          [
+            {
+              "node": "Read Runs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Runs": {
+        "main": [
+          [
+            {
+              "node": "Estimate Cost",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Estimate Cost": {
+        "main": [
+          [
+            {
+              "node": "Email Cost Digest",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "a3721dd9-f321-47d9-8fe5-5602872d782a",
+    "name": "LOADOUT — Daily Health Digest",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 7
+              }
+            ]
+          }
+        },
+        "id": "9939be8e-6900-47c7-8e08-3c0fdba5be27",
+        "name": "Daily 7am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          260,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "={{$env.N8N_API_URL}}/api/v1/workflows?active=true",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-N8N-API-KEY",
+                "value": "={{$env.N8N_API_KEY}}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "8e4ec3f7-0ba4-4fa4-8f6f-8a9516810228",
+        "name": "List Workflows",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          480,
+          300
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const data = $input.first().json.data || [];\nreturn [{ json: { activeCount: data.length, names: data.map(w => w.name).join(', ') || 'none' } }];"
+        },
+        "id": "c9d35deb-e70a-44f0-8ece-5f6c38ccf8a2",
+        "name": "Summarize",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          700,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "=LOADOUT health — {{$json.activeCount}} workers active",
+          "message": "=Good morning. {{$json.activeCount}} LOADOUT workers are active and running.\n\nActive: {{$json.names}}",
+          "options": {}
+        },
+        "id": "bbb9fa0f-842a-412b-8c67-8abb6fb9623c",
+        "name": "Email Health",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          920,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Daily 7am": {
+        "main": [
+          [
+            {
+              "node": "List Workflows",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "List Workflows": {
+        "main": [
+          [
+            {
+              "node": "Summarize",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Summarize": {
+        "main": [
+          [
+            {
+              "node": "Email Health",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "d529fbe5-6470-4fc3-8cab-d569686fb4e8",
+    "name": "LOADOUT — Master Kill-Switch",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-kill-switch",
+          "responseMode": "lastNode"
+        },
+        "id": "22277b14-c471-455f-89d3-6c6d3b18433e",
+        "name": "Kill Switch Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          260,
+          300
+        ],
+        "webhookId": "083ac032-70f9-428e-8d65-b5d9d3645f72"
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "={{$env.N8N_API_URL}}/api/v1/workflows?active=true",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-N8N-API-KEY",
+                "value": "={{$env.N8N_API_KEY}}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "7a6fb613-29f0-45b9-89f8-d4e847767f8b",
+        "name": "List Active",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          480,
+          300
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "return ($input.first().json.data || []).map(w => ({ json: { id: w.id, name: w.name } }));"
+        },
+        "id": "3225a1b9-d29b-40c3-8144-1b873cf28fb0",
+        "name": "Each Workflow",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          700,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.N8N_API_URL}}/api/v1/workflows/{{$json.id}}/deactivate",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-N8N-API-KEY",
+                "value": "={{$env.N8N_API_KEY}}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "44aa06ed-8d9f-4e90-8030-3dbb8c241aac",
+        "name": "Deactivate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          920,
+          300
+        ],
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Kill Switch Webhook": {
+        "main": [
+          [
+            {
+              "node": "List Active",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "List Active": {
+        "main": [
+          [
+            {
+              "node": "Each Workflow",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Each Workflow": {
+        "main": [
+          [
+            {
+              "node": "Deactivate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  }
+]
