@@ -14,6 +14,9 @@ node_modules/
 config.env
 config.env.local
 
+# Installer scratch space — transient credential files, never commit
+install/_runtime/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

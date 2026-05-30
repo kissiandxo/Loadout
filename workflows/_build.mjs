@@ -6,17 +6,11 @@
 // imports as its own n8n workflow and can be enabled/disabled independently.
 
 import { writeFileSync } from "node:fs";
-import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { id, CRED } from "./_ids.mjs";
 
 const DIR = dirname(fileURLToPath(import.meta.url));
-
-// ---- helpers ---------------------------------------------------------------
-const id = (seed) => {
-  const h = createHash("sha1").update(seed).digest("hex");
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
-};
 
 const ERR_HANDLER_ID = id("wf/LOADOUT — Error Handler");
 
@@ -49,15 +43,6 @@ function workflow(name, nodes, connections, { active = false, errorWf = true } =
   if (errorWf && name !== "LOADOUT — Error Handler") settings.errorWorkflow = ERR_HANDLER_ID;
   return { id: id(`wf/${name}`), name, nodes, connections, settings, active };
 }
-
-// credential refs (installer creates these from config.env, matching by name)
-const CRED = {
-  anthropic: { anthropicApi: { id: id("cred/anthropic"), name: "LOADOUT Anthropic" } },
-  gmail: { gmailOAuth2: { id: id("cred/gmail"), name: "LOADOUT Gmail" } },
-  sheets: { googleSheetsOAuth2Api: { id: id("cred/sheets"), name: "LOADOUT Google Sheets" } },
-  slack: { slackApi: { id: id("cred/slack"), name: "LOADOUT Slack" } },
-  twilio: { twilioApi: { id: id("cred/twilio"), name: "LOADOUT Twilio" } },
-};
 
 const MODEL = "claude-sonnet-4-5-20250929"; // installer may swap; must be a valid Anthropic model id
 
