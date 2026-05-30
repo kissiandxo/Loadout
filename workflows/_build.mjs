@@ -461,10 +461,228 @@ function buildLeadGen() {
   return wfs;
 }
 
+// ============================================================================
+// DEPT B — Customer Service (5)
+// ============================================================================
+function buildCustomerService() {
+  const wfs = [];
+
+  // B8 — Website AI Chatbot (RAG-style, owned outright)
+  {
+    const wf = "b/chatbot";
+    const trig = N(wf, "Chat Message (Webhook)", "n8n-nodes-base.webhook", 2,
+      { httpMethod: "POST", path: "loadout-chatbot", responseMode: "responseNode" }, 220, 300, { webhookId: true });
+    const ai = aiAgent(wf, 460, 300,
+      "=You are the website assistant for {{$env.BUSINESS_NAME}}. Answer using the business's own FAQ/knowledge below. If you don't know, say so and offer to take their email so the team can follow up. Be concise and on-brand. Knowledge base:\n\n{{$env.FAQ_TEXT}}",
+      "={{$json.body.message}}");
+    const capture = N(wf, "Capture Lead (if email)", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "append",
+      documentId: { __rl: true, value: "={{$env.CRM_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Leads", mode: "name" },
+      columns: { mappingMode: "autoMapInputData", value: {} }, options: {},
+    }, 760, 380, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const respond = N(wf, "Reply to Visitor", "n8n-nodes-base.respondToWebhook", 1.1,
+      { respondWith: "text", responseBody: "={{$json.output}}" }, 760, 220);
+    const conn = merge([
+      connect(["Chat Message (Webhook)", ai.agentName]),
+      ai.modelConn,
+      connect([], [
+        { from: ai.agentName, to: "Reply to Visitor" },
+        { from: ai.agentName, to: "Capture Lead (if email)" },
+      ]),
+    ]);
+    wfs.push(workflow("B8 — Website AI Chatbot (RAG)", [trig, ...ai.nodes, capture, respond], conn));
+  }
+
+  // B9 — Support Inbox Triage (AI)
+  {
+    const wf = "b/triage";
+    const trig = N(wf, "New Support Email", "n8n-nodes-base.gmailTrigger", 1.2,
+      { pollTimes: { item: [{ mode: "everyMinute" }] }, simple: true, filters: {} }, 220, 300,
+      { credentials: CRED.gmail });
+    const ai = aiAgent(wf, 460, 300,
+      "=You triage the support inbox for {{$env.BUSINESS_NAME}}. For the message, output JSON with: category (sales|support|billing|spam|other), priority (high|medium|low), and a drafted reply in the brand's friendly voice. Output ONLY valid JSON: {\"category\":\"\",\"priority\":\"\",\"draft\":\"\"}.",
+      "=From: {{$json.from}}\nSubject: {{$json.subject}}\nBody: {{$json.snippet || $json.text}}");
+    const parse = N(wf, "Parse Triage", "n8n-nodes-base.code", 2, {
+      jsCode: "let o={}; try{o=JSON.parse($json.output)}catch(e){o={category:'other',priority:'medium',draft:$json.output}}; return [{json:{...o, from:$('New Support Email').item.json.from, subject:$('New Support Email').item.json.subject}}];",
+    }, 760, 300);
+    const draft = N(wf, "Save Draft Reply", "n8n-nodes-base.gmail", 2.1, {
+      resource: "draft", operation: "create",
+      subject: "=Re: {{$json.subject}}", message: "={{$json.draft}}", options: { sendTo: "={{$json.from}}" },
+    }, 1000, 220, { credentials: CRED.gmail, onError: "continueRegularOutput" });
+    const log = logRun(wf, 1000, 380);
+    const conn = merge([
+      connect(["New Support Email", ai.agentName]),
+      ai.modelConn,
+      connect([], [
+        { from: ai.agentName, to: "Parse Triage" },
+        { from: "Parse Triage", to: "Save Draft Reply" },
+        { from: "Parse Triage", to: "Log Run" },
+      ]),
+    ]);
+    wfs.push(workflow("B9 — Support Inbox Triage (AI)", [trig, ...ai.nodes, parse, draft, log], conn));
+  }
+
+  // B10 — FAQ Auto-Responder
+  {
+    const wf = "b/faq";
+    const trig = N(wf, "Question (Webhook)", "n8n-nodes-base.webhook", 2,
+      { httpMethod: "POST", path: "loadout-faq", responseMode: "responseNode" }, 220, 300, { webhookId: true });
+    const ai = aiAgent(wf, 460, 300,
+      "=You answer common customer questions for {{$env.BUSINESS_NAME}} in the brand's voice, 24/7. Use the FAQ below. Keep answers short and direct. If it's not covered, say a human will follow up. FAQ:\n\n{{$env.FAQ_TEXT}}",
+      "={{$json.body.question}}");
+    const respond = N(wf, "Answer", "n8n-nodes-base.respondToWebhook", 1.1,
+      { respondWith: "text", responseBody: "={{$json.output}}" }, 760, 300);
+    const conn = merge([
+      connect(["Question (Webhook)", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Answer"]),
+    ]);
+    wfs.push(workflow("B10 — FAQ Auto-Responder", [trig, ...ai.nodes, respond], conn));
+  }
+
+  // B11 — Order / Job Status Notifier
+  {
+    const wf = "b/status-notifier";
+    const trig = N(wf, "Every 30 min", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "minutes", minutesInterval: 30 }] } }, 220, 300);
+    const read = N(wf, "Read Orders", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CRM_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Orders", mode: "name" }, options: {},
+    }, 440, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const changed = N(wf, "Status Changed?", "n8n-nodes-base.code", 2, {
+      jsCode: "return items.map(i=>i.json).filter(r => r.status && r.notifiedStatus !== r.status && r.email).map(r=>({json:r}));",
+    }, 660, 300);
+    const mail = N(wf, "Email Customer", "n8n-nodes-base.gmail", 2.1, {
+      sendTo: "={{$json.email}}",
+      subject: "=Update on your order {{$json.orderId}} — {{$env.BUSINESS_NAME}}",
+      message: "=Hi {{$json.name}}, your order {{$json.orderId}} is now: {{$json.status}}.\n\nThanks for choosing {{$env.BUSINESS_NAME}}.",
+      options: {},
+    }, 880, 300, { credentials: CRED.gmail, onError: "continueRegularOutput" });
+    const log = logRun(wf, 1100, 300);
+    wfs.push(workflow("B11 — Order / Job Status Notifier",
+      [trig, read, changed, mail, log],
+      connect(["Every 30 min", "Read Orders", "Status Changed?", "Email Customer", "Log Run"])));
+  }
+
+  // B12 — Customer Onboarding Sequencer
+  {
+    const wf = "b/onboarding";
+    const trig = N(wf, "New Customer (Webhook)", "n8n-nodes-base.webhook", 2,
+      { httpMethod: "POST", path: "loadout-onboarding", responseMode: "lastNode" }, 220, 300, { webhookId: true });
+    const ai = aiAgent(wf, 460, 300,
+      "=You write the welcome + first onboarding step for a new customer of {{$env.BUSINESS_NAME}}. Warm welcome, the 2-3 steps to get value fast, and where to get help. Under 150 words. Output ONLY the email body.",
+      "=New customer: {{$json.body.name}}. Product/service: {{$json.body.product || 'our service'}}. Write their welcome.");
+    const send = N(wf, "Send Welcome", "n8n-nodes-base.gmail", 2.1, {
+      sendTo: "={{$('New Customer (Webhook)').item.json.body.email}}",
+      subject: "=Welcome to {{$env.BUSINESS_NAME}}!",
+      message: "={{$json.output}}", options: {},
+    }, 760, 220, { credentials: CRED.gmail, onError: "continueRegularOutput" });
+    const log = logRun(wf, 980, 220);
+    const conn = merge([
+      connect(["New Customer (Webhook)", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Send Welcome", "Log Run"]),
+    ]);
+    wfs.push(workflow("B12 — Customer Onboarding Sequencer", [trig, ...ai.nodes, send, log], conn));
+  }
+
+  return wfs;
+}
+
+// ============================================================================
+// DEPT C — Reputation & Reviews (3)
+// ============================================================================
+function buildReputation() {
+  const wfs = [];
+
+  // C13 — Review Request Automation
+  {
+    const wf = "c/review-request";
+    const trig = N(wf, "Daily 4pm", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", triggerAtHour: 16 }] } }, 220, 300);
+    const read = N(wf, "Read Completed Jobs", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CRM_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Jobs", mode: "name" }, options: {},
+    }, 440, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const eligible = N(wf, "Eligible & Happy", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const now=Date.now();\n" +
+        "return items.map(i=>i.json).filter(r => (r.status||'')==='completed' && r.reviewRequested!=='yes' && r.email && (r.sentiment||'positive')!=='negative' && r.completedAt && (now-Date.parse(r.completedAt))/3600000 >= 2).map(r=>({json:r}));",
+    }, 660, 300);
+    const mail = N(wf, "Ask for Review", "n8n-nodes-base.gmail", 2.1, {
+      sendTo: "={{$json.email}}",
+      subject: "=How did we do, {{$json.name}}?",
+      message: "=Hi {{$json.name}}, thanks for choosing {{$env.BUSINESS_NAME}}! If you have 30 seconds, a quick review really helps us: {{$env.REVIEW_LINK}}",
+      options: {},
+    }, 880, 300, { credentials: CRED.gmail, onError: "continueRegularOutput" });
+    const log = logRun(wf, 1100, 300);
+    wfs.push(workflow("C13 — Review Request Automation",
+      [trig, read, eligible, mail, log],
+      connect(["Daily 4pm", "Read Completed Jobs", "Eligible & Happy", "Ask for Review", "Log Run"])));
+  }
+
+  // C14 — Review Response Agent (AI)
+  {
+    const wf = "c/review-response";
+    const trig = N(wf, "New Review (Webhook)", "n8n-nodes-base.webhook", 2,
+      { httpMethod: "POST", path: "loadout-new-review", responseMode: "lastNode" }, 220, 300, { webhookId: true });
+    const ai = aiAgent(wf, 460, 300,
+      "=You draft public replies to online reviews for {{$env.BUSINESS_NAME}}. Match tone to the rating: warm thanks for positive, calm and solution-focused for negative (never defensive, never share private details). Under 60 words, on-brand. Output ONLY the reply text.",
+      "=Rating: {{$json.body.rating}}/5\nReview: {{$json.body.text}}\nPlatform: {{$json.body.platform}}");
+    const approve = notifyOwnerEmail(wf, "Send Draft to Owner", 760, 220,
+      "=Review reply ready ({{$json.body?.rating || ''}}★) — approve to post",
+      "=A new review came in. Suggested public reply (review, edit, then post on the platform):\n\n---\n{{$json.output}}\n---");
+    const log = logRun(wf, 980, 220);
+    const conn = merge([
+      connect(["New Review (Webhook)", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Send Draft to Owner", "Log Run"]),
+    ]);
+    wfs.push(workflow("C14 — Review Response Agent (AI)", [trig, ...ai.nodes, approve, log], conn));
+  }
+
+  // C15 — Complaint De-escalation (AI)
+  {
+    const wf = "c/complaint";
+    const trig = N(wf, "Complaint (Webhook)", "n8n-nodes-base.webhook", 2,
+      { httpMethod: "POST", path: "loadout-complaint", responseMode: "lastNode" }, 220, 300, { webhookId: true });
+    const ai = aiAgent(wf, 460, 300,
+      "=You handle upset customers for {{$env.BUSINESS_NAME}}. Write a calm, empathetic, structured reply: acknowledge, apologise where appropriate, state the concrete next step, and offer to make it right. Never argue. Under 120 words. Output ONLY the reply body.",
+      "=Angry message from {{$json.body.name}} ({{$json.body.email}}):\n{{$json.body.message}}");
+    const draft = N(wf, "Draft Reply", "n8n-nodes-base.gmail", 2.1, {
+      resource: "draft", operation: "create",
+      subject: "=Re: your message to {{$env.BUSINESS_NAME}}",
+      message: "={{$json.output}}", options: { sendTo: "={{$('Complaint (Webhook)').item.json.body.email}}" },
+    }, 760, 220, { credentials: CRED.gmail, onError: "continueRegularOutput" });
+    const escalate = N(wf, "Escalate (Slack)", "n8n-nodes-base.slack", 2.3, {
+      resource: "message", operation: "post", select: "channel",
+      channelId: { __rl: true, value: "={{$env.SLACK_ALERT_CHANNEL}}", mode: "id" },
+      text: "=:warning: *Complaint flagged* from {{$('Complaint (Webhook)').item.json.body.name}}. A draft reply is waiting in Gmail for your approval.",
+      otherOptions: {},
+    }, 760, 380, { credentials: CRED.slack, onError: "continueRegularOutput" });
+    const conn = merge([
+      connect(["Complaint (Webhook)", ai.agentName]),
+      ai.modelConn,
+      connect([], [
+        { from: ai.agentName, to: "Draft Reply" },
+        { from: ai.agentName, to: "Escalate (Slack)" },
+      ]),
+    ]);
+    wfs.push(workflow("C15 — Complaint De-escalation (AI)", [trig, ...ai.nodes, draft, escalate], conn));
+  }
+
+  return wfs;
+}
+
 // ---- emit ------------------------------------------------------------------
 const FILES = {
   "infra.json": buildInfra(),
   "a_leadgen_sales.json": buildLeadGen(),
+  "b_customer_service.json": buildCustomerService(),
+  "c_reputation_reviews.json": buildReputation(),
 };
 
 let total = 0;

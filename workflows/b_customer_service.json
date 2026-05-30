@@ -1,0 +1,835 @@
+[
+  {
+    "id": "127502d8-fce7-4567-8c28-1ec508d86c7e",
+    "name": "B8 — Website AI Chatbot (RAG)",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-chatbot",
+          "responseMode": "responseNode"
+        },
+        "id": "dc1294a9-8479-475d-8da9-4d97a6aeb809",
+        "name": "Chat Message (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "a5f89d0f-f885-4598-81c0-b11a2bd5670e"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "={{$json.body.message}}",
+          "options": {
+            "systemMessage": "=You are the website assistant for {{$env.BUSINESS_NAME}}. Answer using the business's own FAQ/knowledge below. If you don't know, say so and offer to take their email so the team can follow up. Be concise and on-brand. Knowledge base:\n\n{{$env.FAQ_TEXT}}"
+          }
+        },
+        "id": "b1606502-6634-4635-87e6-edd64f03067e",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "0e2e5a8c-7938-4c57-8904-591d9031e53d",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Leads",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "45dea195-93a2-4faa-8c8b-6f14926b6d4f",
+        "name": "Capture Lead (if email)",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          760,
+          380
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "={{$json.output}}"
+        },
+        "id": "b9494548-2710-4fea-809b-be7fb8037c42",
+        "name": "Reply to Visitor",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          760,
+          220
+        ]
+      }
+    ],
+    "connections": {
+      "Chat Message (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Reply to Visitor",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Capture Lead (if email)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "6c109c5b-2d4d-46ba-8a9d-3d387ee67584",
+    "name": "B9 — Support Inbox Triage (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyMinute"
+              }
+            ]
+          },
+          "simple": true,
+          "filters": {}
+        },
+        "id": "2ea0863a-d830-4550-8074-d5a26a38c358",
+        "name": "New Support Email",
+        "type": "n8n-nodes-base.gmailTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=From: {{$json.from}}\nSubject: {{$json.subject}}\nBody: {{$json.snippet || $json.text}}",
+          "options": {
+            "systemMessage": "=You triage the support inbox for {{$env.BUSINESS_NAME}}. For the message, output JSON with: category (sales|support|billing|spam|other), priority (high|medium|low), and a drafted reply in the brand's friendly voice. Output ONLY valid JSON: {\"category\":\"\",\"priority\":\"\",\"draft\":\"\"}."
+          }
+        },
+        "id": "8641412d-8206-455a-89a6-2c3bb4bfc592",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "fa6c935a-f87f-476f-840b-b34904e2aaef",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "let o={}; try{o=JSON.parse($json.output)}catch(e){o={category:'other',priority:'medium',draft:$json.output}}; return [{json:{...o, from:$('New Support Email').item.json.from, subject:$('New Support Email').item.json.subject}}];"
+        },
+        "id": "f6605c37-bd68-46ea-8e12-68ae03464043",
+        "name": "Parse Triage",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          760,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "draft",
+          "operation": "create",
+          "subject": "=Re: {{$json.subject}}",
+          "message": "={{$json.draft}}",
+          "options": {
+            "sendTo": "={{$json.from}}"
+          }
+        },
+        "id": "3cd823f7-78a7-4202-8450-32f0df8e456b",
+        "name": "Save Draft Reply",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1000,
+          220
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "60537c2a-d692-40de-89c0-2f46cb24ed7e",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          1000,
+          380
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "New Support Email": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Parse Triage",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Triage": {
+        "main": [
+          [
+            {
+              "node": "Save Draft Reply",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "b34993c1-32c9-4ec1-837a-6f45504b10b6",
+    "name": "B10 — FAQ Auto-Responder",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-faq",
+          "responseMode": "responseNode"
+        },
+        "id": "3ecf62f7-d2fd-43e5-8410-7857f827b4f3",
+        "name": "Question (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "5bebe7c9-c1e3-49e3-8b59-ed9bf39688ce"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "={{$json.body.question}}",
+          "options": {
+            "systemMessage": "=You answer common customer questions for {{$env.BUSINESS_NAME}} in the brand's voice, 24/7. Use the FAQ below. Keep answers short and direct. If it's not covered, say a human will follow up. FAQ:\n\n{{$env.FAQ_TEXT}}"
+          }
+        },
+        "id": "a8599cda-20c9-4564-8b7a-2ccb0cb3023e",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "22c36867-a5e6-4c4c-84f4-bbbb6283e818",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "={{$json.output}}"
+        },
+        "id": "3087c830-e218-4ebe-8dad-65362e632778",
+        "name": "Answer",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          760,
+          300
+        ]
+      }
+    ],
+    "connections": {
+      "Question (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Answer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "8bc702d7-8dac-4546-8a86-18f70b92b980",
+    "name": "B11 — Order / Job Status Notifier",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 30
+              }
+            ]
+          }
+        },
+        "id": "41b5c578-19d0-4104-8a76-78a05851c7a0",
+        "name": "Every 30 min",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Orders",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "bacc5d73-a35d-4824-8812-f0baf653e17c",
+        "name": "Read Orders",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          440,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "return items.map(i=>i.json).filter(r => r.status && r.notifiedStatus !== r.status && r.email).map(r=>({json:r}));"
+        },
+        "id": "57bfb44d-c67d-4e45-8a96-921526910ffa",
+        "name": "Status Changed?",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$json.email}}",
+          "subject": "=Update on your order {{$json.orderId}} — {{$env.BUSINESS_NAME}}",
+          "message": "=Hi {{$json.name}}, your order {{$json.orderId}} is now: {{$json.status}}.\n\nThanks for choosing {{$env.BUSINESS_NAME}}.",
+          "options": {}
+        },
+        "id": "95bf3b2a-cda0-46e8-8163-045cab5b63fa",
+        "name": "Email Customer",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          880,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "64327f41-3229-4474-8044-67af5c2fa55e",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          1100,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Every 30 min": {
+        "main": [
+          [
+            {
+              "node": "Read Orders",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Orders": {
+        "main": [
+          [
+            {
+              "node": "Status Changed?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Status Changed?": {
+        "main": [
+          [
+            {
+              "node": "Email Customer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email Customer": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "f712d760-0cf1-4fdc-8dc6-90dcf9142b0c",
+    "name": "B12 — Customer Onboarding Sequencer",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-onboarding",
+          "responseMode": "lastNode"
+        },
+        "id": "4f204958-2ccd-4b0a-84a3-4e18d1758cde",
+        "name": "New Customer (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "83bb27e2-34cf-4e24-8ec4-8715256d3d08"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=New customer: {{$json.body.name}}. Product/service: {{$json.body.product || 'our service'}}. Write their welcome.",
+          "options": {
+            "systemMessage": "=You write the welcome + first onboarding step for a new customer of {{$env.BUSINESS_NAME}}. Warm welcome, the 2-3 steps to get value fast, and where to get help. Under 150 words. Output ONLY the email body."
+          }
+        },
+        "id": "d94838b3-70f3-44db-8c5c-3104ee00eb08",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "cf80c454-d10b-4e7e-8ea5-82fcca9ae99b",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$('New Customer (Webhook)').item.json.body.email}}",
+          "subject": "=Welcome to {{$env.BUSINESS_NAME}}!",
+          "message": "={{$json.output}}",
+          "options": {}
+        },
+        "id": "cb6d6689-4264-48cf-8e3b-e0b6fa7b3c45",
+        "name": "Send Welcome",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          760,
+          220
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "f7a4cc66-63b8-4022-8307-4396b5448d3a",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          980,
+          220
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "New Customer (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Send Welcome",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Welcome": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  }
+]

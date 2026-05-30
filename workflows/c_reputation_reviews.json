@@ -1,0 +1,518 @@
+[
+  {
+    "id": "81355a61-3520-4024-871e-8a556fde24d3",
+    "name": "C13 — Review Request Automation",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 16
+              }
+            ]
+          }
+        },
+        "id": "822d72bb-b212-42a6-8ce7-06d6e87ffe32",
+        "name": "Daily 4pm",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Jobs",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "06ef7be3-8c2b-4f4c-8863-91f029d7f457",
+        "name": "Read Completed Jobs",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          440,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const now=Date.now();\nreturn items.map(i=>i.json).filter(r => (r.status||'')==='completed' && r.reviewRequested!=='yes' && r.email && (r.sentiment||'positive')!=='negative' && r.completedAt && (now-Date.parse(r.completedAt))/3600000 >= 2).map(r=>({json:r}));"
+        },
+        "id": "037d00fb-583f-4dda-8cff-a01fb5082a32",
+        "name": "Eligible & Happy",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$json.email}}",
+          "subject": "=How did we do, {{$json.name}}?",
+          "message": "=Hi {{$json.name}}, thanks for choosing {{$env.BUSINESS_NAME}}! If you have 30 seconds, a quick review really helps us: {{$env.REVIEW_LINK}}",
+          "options": {}
+        },
+        "id": "6398f201-7a6a-4879-891d-7d5ba8b52361",
+        "name": "Ask for Review",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          880,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "f04fbb12-8243-42da-83a4-b74c6be0809d",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          1100,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Daily 4pm": {
+        "main": [
+          [
+            {
+              "node": "Read Completed Jobs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Completed Jobs": {
+        "main": [
+          [
+            {
+              "node": "Eligible & Happy",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Eligible & Happy": {
+        "main": [
+          [
+            {
+              "node": "Ask for Review",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ask for Review": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "d5622e39-9d0a-4059-84f8-34da8a6d7ad8",
+    "name": "C14 — Review Response Agent (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-new-review",
+          "responseMode": "lastNode"
+        },
+        "id": "38a6c1fb-2943-43b8-8356-4a98534686b5",
+        "name": "New Review (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "37559164-0bd8-4f8c-8292-4684f2563e65"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Rating: {{$json.body.rating}}/5\nReview: {{$json.body.text}}\nPlatform: {{$json.body.platform}}",
+          "options": {
+            "systemMessage": "=You draft public replies to online reviews for {{$env.BUSINESS_NAME}}. Match tone to the rating: warm thanks for positive, calm and solution-focused for negative (never defensive, never share private details). Under 60 words, on-brand. Output ONLY the reply text."
+          }
+        },
+        "id": "83c35c93-0ec2-417e-8f56-4693d15e0db6",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "d6b659e0-2a8f-4095-8402-2f97b4c9a73f",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "=Review reply ready ({{$json.body?.rating || ''}}★) — approve to post",
+          "message": "=A new review came in. Suggested public reply (review, edit, then post on the platform):\n\n---\n{{$json.output}}\n---",
+          "options": {}
+        },
+        "id": "27cf3c5c-1f48-405c-86da-b8767a38f756",
+        "name": "Send Draft to Owner",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          760,
+          220
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "c226bbde-e4d0-4868-881e-8cdae44cfd23",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          980,
+          220
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "New Review (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Send Draft to Owner",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Draft to Owner": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "7b679037-d77a-415f-8b95-ca46405ad052",
+    "name": "C15 — Complaint De-escalation (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "loadout-complaint",
+          "responseMode": "lastNode"
+        },
+        "id": "497596f7-5af6-4ee1-8c14-d09e68c7fa43",
+        "name": "Complaint (Webhook)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          300
+        ],
+        "webhookId": "e6fba72d-1e58-4d6e-8229-d620de18cc6e"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Angry message from {{$json.body.name}} ({{$json.body.email}}):\n{{$json.body.message}}",
+          "options": {
+            "systemMessage": "=You handle upset customers for {{$env.BUSINESS_NAME}}. Write a calm, empathetic, structured reply: acknowledge, apologise where appropriate, state the concrete next step, and offer to make it right. Never argue. Under 120 words. Output ONLY the reply body."
+          }
+        },
+        "id": "7f494efa-af28-4fd2-8056-48346bc5f41f",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          460,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "5b0ecfb3-dbdc-4f58-81b5-c99b71632639",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "draft",
+          "operation": "create",
+          "subject": "=Re: your message to {{$env.BUSINESS_NAME}}",
+          "message": "={{$json.output}}",
+          "options": {
+            "sendTo": "={{$('Complaint (Webhook)').item.json.body.email}}"
+          }
+        },
+        "id": "e5460b59-ffbc-42c8-8ae3-01883d93f005",
+        "name": "Draft Reply",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          760,
+          220
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "resource": "message",
+          "operation": "post",
+          "select": "channel",
+          "channelId": {
+            "__rl": true,
+            "value": "={{$env.SLACK_ALERT_CHANNEL}}",
+            "mode": "id"
+          },
+          "text": "=:warning: *Complaint flagged* from {{$('Complaint (Webhook)').item.json.body.name}}. A draft reply is waiting in Gmail for your approval.",
+          "otherOptions": {}
+        },
+        "id": "923a32d3-798d-42a4-8c07-4e486d0df1de",
+        "name": "Escalate (Slack)",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.3,
+        "position": [
+          760,
+          380
+        ],
+        "credentials": {
+          "slackApi": {
+            "id": "9450cf0a-bb9c-40ba-8e2d-936351ed589e",
+            "name": "LOADOUT Slack"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Complaint (Webhook)": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Draft Reply",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Escalate (Slack)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  }
+]
