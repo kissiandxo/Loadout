@@ -162,8 +162,41 @@ function kill() {
   log("ok Everything paused. Re-run `activate` to resume.");
 }
 
+// one-command guided install (two phases around the browser OAuth step)
+function setup() {
+  log("=== LOADOUT setup — phase 1 of 2 ===\n");
+  doctorSoft();
+  up();
+  // up() is async (waits for healthz); give it a beat, then creds
+  setTimeout(() => {
+    creds();
+    log("\n=== Phase 1 done. ===");
+    log("If any OAuth credentials were listed above, connect them now in your");
+    log("browser (http://localhost:5678 -> Credentials -> Connect -> Approve).");
+    log("\nThen finish with:  node install/loadout.mjs go");
+  }, 8000);
+}
+
+// phase 2: import + activate + verify (run after OAuth connect)
+function go() {
+  log("=== LOADOUT setup — phase 2 of 2 ===\n");
+  importWorkflows();
+  activate();
+  verify();
+  log("\nYour AI staff are live. Pause anytime: node install/loadout.mjs kill");
+}
+
+// non-exiting prereq check used inside setup()
+function doctorSoft() {
+  try { log("ok Docker: " + shCap("docker --version")); }
+  catch { log("x Docker missing — install Docker Desktop, then re-run setup."); process.exit(1); }
+  if (!existsSync(join(ROOT, "config.env"))) {
+    log("x config.env missing. Run: cp config.env.template config.env  (then fill it in)"); process.exit(1);
+  }
+}
+
 const cmd = process.argv[2];
-const table = { doctor, up, creds, import: importWorkflows, activate, verify, status, kill };
+const table = { doctor, setup, go, up, creds, import: importWorkflows, activate, verify, status, kill };
 if (!table[cmd]) {
   log("Usage: node install/loadout.mjs <doctor|up|creds|import|activate|verify|status|kill>");
   process.exit(1);

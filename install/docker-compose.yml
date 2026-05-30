@@ -3,7 +3,7 @@
 #   docker compose -f install/docker-compose.yml up -d
 services:
   n8n:
-    image: docker.n8n.io/n8nio/n8n:latest
+    image: docker.n8n.io/n8nio/n8n:1.70.0   # pinned for stability; bump deliberately after testing
     container_name: loadout-n8n
     restart: unless-stopped
     ports:
