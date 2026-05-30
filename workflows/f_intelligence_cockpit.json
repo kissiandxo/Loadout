@@ -1,0 +1,963 @@
+[
+  {
+    "id": "8a1abbe1-0458-4aa1-8aed-d15ca8a9c6f3",
+    "name": "F27 — Daily Business Digest",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 6
+              }
+            ]
+          }
+        },
+        "id": "4fb7eeca-4b01-4428-898c-16fca8737b9b",
+        "name": "Daily 6:30am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Metrics",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "872443ba-af78-4a57-86e3-bae097161459",
+        "name": "Read Metrics",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          420,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const rows=items.map(i=>i.json); const last=rows[rows.length-1]||{}; return [{json:{numbers:JSON.stringify(last)}}];"
+        },
+        "id": "496c0322-615b-451f-8afc-6677be686c2c",
+        "name": "Gather Numbers",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Latest numbers (JSON): {{$json.numbers}}",
+          "options": {
+            "systemMessage": "=You write the overnight business digest for the owner of {{$env.BUSINESS_NAME}}. Turn the numbers into a short, plain-English morning brief: yesterday's headline numbers, anything notable, and one suggested focus for today. Under 150 words."
+          }
+        },
+        "id": "2bd290eb-e79a-42e0-8e4b-9bdc66fd49d5",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          860,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "a9ef3b17-7213-4394-8750-831711ec1978",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          820,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "version": 2
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "id": "f26d8661-56d9-4907-87e9-f9f23216a453",
+                "leftValue": "={{$env.REPORT_CHANNEL}}",
+                "rightValue": "slack",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "id": "8937f33c-f9e9-43bf-88d1-3db4ba8ba15d",
+        "name": "Email or Slack?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1160,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "message",
+          "operation": "post",
+          "select": "channel",
+          "channelId": {
+            "__rl": true,
+            "value": "={{$env.SLACK_ALERT_CHANNEL}}",
+            "mode": "id"
+          },
+          "text": "=:sunrise: *Morning digest — {{$env.BUSINESS_NAME}}*\n{{$json.output || $json.report}}",
+          "otherOptions": {}
+        },
+        "id": "5b342e48-876c-4133-84e8-aafdafbe27e1",
+        "name": "Report (Slack)",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.3,
+        "position": [
+          1400,
+          220
+        ],
+        "credentials": {
+          "slackApi": {
+            "id": "9450cf0a-bb9c-40ba-8e2d-936351ed589e",
+            "name": "LOADOUT Slack"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "Your morning business digest",
+          "message": "={{$json.output || $json.report}}",
+          "options": {}
+        },
+        "id": "981d65ac-4765-48bf-89cf-ad1805cec2e8",
+        "name": "Report (Email)",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1400,
+          380
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Daily 6:30am": {
+        "main": [
+          [
+            {
+              "node": "Read Metrics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Metrics": {
+        "main": [
+          [
+            {
+              "node": "Gather Numbers",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gather Numbers": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Email or Slack?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email or Slack?": {
+        "main": [
+          [
+            {
+              "node": "Report (Slack)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Report (Email)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "ed57b96c-578e-4047-8456-bf86c94b989c",
+    "name": "F28 — Weekly Performance Briefing",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "weeks",
+                "triggerAtDay": [
+                  1
+                ],
+                "triggerAtHour": 8
+              }
+            ]
+          }
+        },
+        "id": "54409f33-5618-48d9-8dbb-4553d3a9afc9",
+        "name": "Monday 8am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Metrics",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "f5b4d169-4b44-475f-829b-c1dc0194ccd3",
+        "name": "Read Metrics",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          420,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const since=Date.now()-7*86400000; const rows=items.map(i=>i.json).filter(r=>r.date && Date.parse(r.date)>=since); return [{json:{week:JSON.stringify(rows)}}];"
+        },
+        "id": "140784eb-27df-47d0-853b-6eb69ae309b9",
+        "name": "Week Window",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=This week's metric rows (JSON): {{$json.week}}",
+          "options": {
+            "systemMessage": "=You write the Monday weekly performance briefing for {{$env.BUSINESS_NAME}}: sales, marketing and support. Compare to the prior week if data allows, call out wins and risks, and give 2 recommended actions. Scannable, under 250 words."
+          }
+        },
+        "id": "6f82c55d-b90e-4a97-88c4-3b6bceb51e01",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          860,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "d0b8d6b9-068a-4aa5-8071-6085a105f4df",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          820,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "version": 2
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "id": "2f9ff62c-1b9b-40e2-89dd-2bd09881007a",
+                "leftValue": "={{$env.REPORT_CHANNEL}}",
+                "rightValue": "slack",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "id": "e9426e9e-636b-429c-8391-45a3e795f1e1",
+        "name": "Email or Slack?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1160,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "message",
+          "operation": "post",
+          "select": "channel",
+          "channelId": {
+            "__rl": true,
+            "value": "={{$env.SLACK_ALERT_CHANNEL}}",
+            "mode": "id"
+          },
+          "text": "=:bar_chart: *Weekly briefing — {{$env.BUSINESS_NAME}}*\n{{$json.output || $json.report}}",
+          "otherOptions": {}
+        },
+        "id": "94e23c4e-2728-4fc6-8dde-8720cc907f18",
+        "name": "Report (Slack)",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.3,
+        "position": [
+          1400,
+          220
+        ],
+        "credentials": {
+          "slackApi": {
+            "id": "9450cf0a-bb9c-40ba-8e2d-936351ed589e",
+            "name": "LOADOUT Slack"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "Weekly performance briefing",
+          "message": "={{$json.output || $json.report}}",
+          "options": {}
+        },
+        "id": "cb2f4e2b-f199-467f-8890-cdfb941e02c4",
+        "name": "Report (Email)",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1400,
+          380
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Monday 8am": {
+        "main": [
+          [
+            {
+              "node": "Read Metrics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Metrics": {
+        "main": [
+          [
+            {
+              "node": "Week Window",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Week Window": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Email or Slack?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email or Slack?": {
+        "main": [
+          [
+            {
+              "node": "Report (Slack)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Report (Email)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "1a336011-9f53-402c-86fc-6f9d2dba8eab",
+    "name": "F29 — Churn / At-Risk Radar",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 5
+              }
+            ]
+          }
+        },
+        "id": "1ccc73e2-b869-4f3c-8bc7-0228b42d7530",
+        "name": "Daily 5am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Customers",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "34e6423f-816d-44f1-8b20-246e04d62083",
+        "name": "Read Customers",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          420,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const now=Date.now(); const days=parseInt($env.CHURN_DORMANT_DAYS||'60',10);\nreturn items.map(i=>i.json).filter(r=>r.lastActivity && r.email && (now-Date.parse(r.lastActivity))/86400000>=days && r.winbackSent!=='yes').map(r=>({json:r}));"
+        },
+        "id": "20e3c57c-0961-45a8-89e8-ac57ff1b1d4b",
+        "name": "Detect At-Risk",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Customer {{$json.name}} last active {{$json.lastActivity}}. Write a win-back.",
+          "options": {
+            "systemMessage": "=You write a short win-back email for a lapsing customer of {{$env.BUSINESS_NAME}}. Warm, no guilt, one reason to come back, soft CTA. Under 90 words. Output ONLY the email body."
+          }
+        },
+        "id": "3d5e5295-ad87-4df7-8931-e18899823090",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          860,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "2d97ee03-8e6a-43f4-85d9-b4a269de28eb",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          820,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$('Detect At-Risk').item.json.email}}",
+          "subject": "=We'd love to see you back at {{$env.BUSINESS_NAME}}",
+          "message": "={{$json.output}}",
+          "options": {}
+        },
+        "id": "0b641846-5891-4b53-802b-25259776aa02",
+        "name": "Send Win-back",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1160,
+          220
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "983e873e-4858-48b3-8849-8249513b8a80",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          1380,
+          220
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Daily 5am": {
+        "main": [
+          [
+            {
+              "node": "Read Customers",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Customers": {
+        "main": [
+          [
+            {
+              "node": "Detect At-Risk",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Detect At-Risk": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Send Win-back",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Win-back": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "67e63eb3-7c7b-4c8a-8eaa-df681b8aebfb",
+    "name": "F30 — KPI Watchdog & Alerts",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "hoursInterval": 2
+              }
+            ]
+          }
+        },
+        "id": "33279ec5-89c2-4d3d-8826-b475ccc26c30",
+        "name": "Every 2 hours",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Metrics",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "a09ce4f7-8969-41ae-8b08-4bb15c11b3b1",
+        "name": "Read Metrics",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          420,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const rows=items.map(i=>i.json); const last=rows[rows.length-1]||{};\nconst alerts=[];\nconst salesFloor=parseFloat($env.KPI_SALES_FLOOR||'0');\nconst complaintCeil=parseFloat($env.KPI_COMPLAINT_CEILING||'5');\nconst spendCeil=parseFloat($env.KPI_SPEND_CEILING||'1000');\nif(salesFloor && parseFloat(last.sales||0)<salesFloor) alerts.push(`Sales ${last.sales} below floor ${salesFloor}`);\nif(parseFloat(last.complaints||0)>complaintCeil) alerts.push(`Complaints ${last.complaints} above ${complaintCeil}`);\nif(parseFloat(last.spend||0)>spendCeil) alerts.push(`Spend ${last.spend} over ${spendCeil}`);\nreturn alerts.length?[{json:{alert:alerts.join('; ')}}]:[];"
+        },
+        "id": "2e4a130e-aca3-42b8-8021-27a192c0f650",
+        "name": "Check Thresholds",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "message",
+          "operation": "post",
+          "select": "channel",
+          "channelId": {
+            "__rl": true,
+            "value": "={{$env.SLACK_ALERT_CHANNEL}}",
+            "mode": "id"
+          },
+          "text": "=:rotating_light: *KPI alert* — {{$json.alert}}",
+          "otherOptions": {}
+        },
+        "id": "f7fcb620-558f-42b1-8e5c-5ba956692b91",
+        "name": "KPI Alert (Slack)",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.3,
+        "position": [
+          880,
+          220
+        ],
+        "credentials": {
+          "slackApi": {
+            "id": "9450cf0a-bb9c-40ba-8e2d-936351ed589e",
+            "name": "LOADOUT Slack"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "KPI alert — something moved",
+          "message": "={{$json.alert}}",
+          "options": {}
+        },
+        "id": "1341b8bc-2a0a-49dc-8ab3-0585b74d2389",
+        "name": "KPI Alert (Email)",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          880,
+          380
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Every 2 hours": {
+        "main": [
+          [
+            {
+              "node": "Read Metrics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Metrics": {
+        "main": [
+          [
+            {
+              "node": "Check Thresholds",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Thresholds": {
+        "main": [
+          [
+            {
+              "node": "KPI Alert (Slack)",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "KPI Alert (Email)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  }
+]

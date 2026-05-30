@@ -993,6 +993,157 @@ function buildOperations() {
   return wfs;
 }
 
+// ============================================================================
+// DEPT F — Intelligence & Owner Cockpit (4)
+// ============================================================================
+function buildIntelligence() {
+  const wfs = [];
+
+  // helper: deliver via email OR slack based on $env.REPORT_CHANNEL
+  const deliver = (wf, x, y, subject, slackPrefix) => {
+    const gate = N(wf, "Email or Slack?", "n8n-nodes-base.if", 2, {
+      conditions: { options: { caseSensitive: false, version: 2 }, combinator: "and", conditions: [
+        { id: id(wf + "/d"), leftValue: "={{$env.REPORT_CHANNEL}}", rightValue: "slack", operator: { type: "string", operation: "equals" } },
+      ] },
+    }, x, y);
+    const slack = N(wf, "Report (Slack)", "n8n-nodes-base.slack", 2.3, {
+      resource: "message", operation: "post", select: "channel",
+      channelId: { __rl: true, value: "={{$env.SLACK_ALERT_CHANNEL}}", mode: "id" },
+      text: "=" + slackPrefix + "\n{{$json.output || $json.report}}", otherOptions: {},
+    }, x + 240, y - 80, { credentials: CRED.slack, onError: "continueRegularOutput" });
+    const mail = notifyOwnerEmail(wf, "Report (Email)", x + 240, y + 80, subject, "={{$json.output || $json.report}}");
+    return { nodes: [gate, slack, mail], gateName: "Email or Slack?",
+      conn: connect([], [
+        { from: "Email or Slack?", to: "Report (Slack)", outputIndex: 0 },
+        { from: "Email or Slack?", to: "Report (Email)", outputIndex: 1 },
+      ]) };
+  };
+
+  // F27 — Daily Business Digest
+  {
+    const wf = "f/daily-digest";
+    const trig = N(wf, "Daily 6:30am", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", triggerAtHour: 6 }] } }, 200, 300);
+    const read = N(wf, "Read Metrics", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.LOADOUT_LOG_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Metrics", mode: "name" }, options: {},
+    }, 420, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const gather = N(wf, "Gather Numbers", "n8n-nodes-base.code", 2, {
+      jsCode: "const rows=items.map(i=>i.json); const last=rows[rows.length-1]||{}; return [{json:{numbers:JSON.stringify(last)}}];",
+    }, 640, 300);
+    const ai = aiAgent(wf, 860, 300,
+      "=You write the overnight business digest for the owner of {{$env.BUSINESS_NAME}}. Turn the numbers into a short, plain-English morning brief: yesterday's headline numbers, anything notable, and one suggested focus for today. Under 150 words.",
+      "=Latest numbers (JSON): {{$json.numbers}}");
+    const d = deliver(wf, 1160, 300, "Your morning business digest", ":sunrise: *Morning digest — " + "{{$env.BUSINESS_NAME}}*");
+    const conn = merge([
+      connect(["Daily 6:30am", "Read Metrics", "Gather Numbers", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, d.gateName]),
+      d.conn,
+    ]);
+    wfs.push(workflow("F27 — Daily Business Digest", [trig, read, gather, ...ai.nodes, ...d.nodes], conn));
+  }
+
+  // F28 — Weekly Performance Briefing (Mon 8am)
+  {
+    const wf = "f/weekly-briefing";
+    const trig = N(wf, "Monday 8am", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "weeks", triggerAtDay: [1], triggerAtHour: 8 }] } }, 200, 300);
+    const read = N(wf, "Read Metrics", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.LOADOUT_LOG_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Metrics", mode: "name" }, options: {},
+    }, 420, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const week = N(wf, "Week Window", "n8n-nodes-base.code", 2, {
+      jsCode: "const since=Date.now()-7*86400000; const rows=items.map(i=>i.json).filter(r=>r.date && Date.parse(r.date)>=since); return [{json:{week:JSON.stringify(rows)}}];",
+    }, 640, 300);
+    const ai = aiAgent(wf, 860, 300,
+      "=You write the Monday weekly performance briefing for {{$env.BUSINESS_NAME}}: sales, marketing and support. Compare to the prior week if data allows, call out wins and risks, and give 2 recommended actions. Scannable, under 250 words.",
+      "=This week's metric rows (JSON): {{$json.week}}");
+    const d = deliver(wf, 1160, 300, "Weekly performance briefing", ":bar_chart: *Weekly briefing — " + "{{$env.BUSINESS_NAME}}*");
+    const conn = merge([
+      connect(["Monday 8am", "Read Metrics", "Week Window", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, d.gateName]),
+      d.conn,
+    ]);
+    wfs.push(workflow("F28 — Weekly Performance Briefing", [trig, read, week, ...ai.nodes, ...d.nodes], conn));
+  }
+
+  // F29 — Churn / At-Risk Radar
+  {
+    const wf = "f/churn-radar";
+    const trig = N(wf, "Daily 5am", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", triggerAtHour: 5 }] } }, 200, 300);
+    const read = N(wf, "Read Customers", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CRM_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Customers", mode: "name" }, options: {},
+    }, 420, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const risk = N(wf, "Detect At-Risk", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const now=Date.now(); const days=parseInt($env.CHURN_DORMANT_DAYS||'60',10);\n" +
+        "return items.map(i=>i.json).filter(r=>r.lastActivity && r.email && (now-Date.parse(r.lastActivity))/86400000>=days && r.winbackSent!=='yes').map(r=>({json:r}));",
+    }, 640, 300);
+    const ai = aiAgent(wf, 860, 300,
+      "=You write a short win-back email for a lapsing customer of {{$env.BUSINESS_NAME}}. Warm, no guilt, one reason to come back, soft CTA. Under 90 words. Output ONLY the email body.",
+      "=Customer {{$json.name}} last active {{$json.lastActivity}}. Write a win-back.");
+    const send = N(wf, "Send Win-back", "n8n-nodes-base.gmail", 2.1, {
+      sendTo: "={{$('Detect At-Risk').item.json.email}}",
+      subject: "=We'd love to see you back at {{$env.BUSINESS_NAME}}",
+      message: "={{$json.output}}", options: {},
+    }, 1160, 220, { credentials: CRED.gmail, onError: "continueRegularOutput" });
+    const log = logRun(wf, 1380, 220);
+    const conn = merge([
+      connect(["Daily 5am", "Read Customers", "Detect At-Risk", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Send Win-back", "Log Run"]),
+    ]);
+    wfs.push(workflow("F29 — Churn / At-Risk Radar", [trig, read, risk, ...ai.nodes, send, log], conn));
+  }
+
+  // F30 — KPI Watchdog & Alerts
+  {
+    const wf = "f/kpi-watchdog";
+    const trig = N(wf, "Every 2 hours", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", hoursInterval: 2 }] } }, 200, 300);
+    const read = N(wf, "Read Metrics", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.LOADOUT_LOG_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Metrics", mode: "name" }, options: {},
+    }, 420, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const check = N(wf, "Check Thresholds", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const rows=items.map(i=>i.json); const last=rows[rows.length-1]||{};\n" +
+        "const alerts=[];\n" +
+        "const salesFloor=parseFloat($env.KPI_SALES_FLOOR||'0');\n" +
+        "const complaintCeil=parseFloat($env.KPI_COMPLAINT_CEILING||'5');\n" +
+        "const spendCeil=parseFloat($env.KPI_SPEND_CEILING||'1000');\n" +
+        "if(salesFloor && parseFloat(last.sales||0)<salesFloor) alerts.push(`Sales ${last.sales} below floor ${salesFloor}`);\n" +
+        "if(parseFloat(last.complaints||0)>complaintCeil) alerts.push(`Complaints ${last.complaints} above ${complaintCeil}`);\n" +
+        "if(parseFloat(last.spend||0)>spendCeil) alerts.push(`Spend ${last.spend} over ${spendCeil}`);\n" +
+        "return alerts.length?[{json:{alert:alerts.join('; ')}}]:[];",
+    }, 640, 300);
+    const slack = N(wf, "KPI Alert (Slack)", "n8n-nodes-base.slack", 2.3, {
+      resource: "message", operation: "post", select: "channel",
+      channelId: { __rl: true, value: "={{$env.SLACK_ALERT_CHANNEL}}", mode: "id" },
+      text: "=:rotating_light: *KPI alert* — {{$json.alert}}", otherOptions: {},
+    }, 880, 220, { credentials: CRED.slack, onError: "continueRegularOutput" });
+    const mail = notifyOwnerEmail(wf, "KPI Alert (Email)", 880, 380,
+      "KPI alert — something moved", "={{$json.alert}}");
+    const conn = connect([], [
+      { from: "Every 2 hours", to: "Read Metrics" },
+      { from: "Read Metrics", to: "Check Thresholds" },
+      { from: "Check Thresholds", to: "KPI Alert (Slack)" },
+      { from: "Check Thresholds", to: "KPI Alert (Email)" },
+    ]);
+    wfs.push(workflow("F30 — KPI Watchdog & Alerts", [trig, read, check, slack, mail], conn));
+  }
+
+  return wfs;
+}
+
 // ---- emit ------------------------------------------------------------------
 const FILES = {
   "infra.json": buildInfra(),
@@ -1001,6 +1152,7 @@ const FILES = {
   "c_reputation_reviews.json": buildReputation(),
   "d_content_social.json": buildContentSocial(),
   "e_operations_admin.json": buildOperations(),
+  "f_intelligence_cockpit.json": buildIntelligence(),
 };
 
 let total = 0;
