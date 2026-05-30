@@ -693,5 +693,245 @@
       "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
     },
     "active": false
+  },
+  {
+    "id": "b2a2caaf-d48e-467e-8b95-dfe66e860ebb",
+    "name": "C17 — Brand Mention Monitor (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours"
+              }
+            ]
+          }
+        },
+        "id": "c1e2c6a4-cfc0-46ba-8f37-4771b2419204",
+        "name": "Hourly",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "={{$env.BRAND_MENTION_FEED_URL}}",
+          "options": {}
+        },
+        "id": "f57de1c9-0a05-45d2-8d1c-39ed12ce630b",
+        "name": "Fetch Mentions",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          420,
+          300
+        ],
+        "onError": "continueErrorOutput",
+        "retryOnFail": true
+      },
+      {
+        "parameters": {
+          "jsCode": "const raw=$json.data||$json.body||JSON.stringify($json);\nconst txt=typeof raw==='string'?raw:JSON.stringify(raw);\nconst since=Date.now()-3600000;\n// crude RSS item split; works for Google Alerts / most feeds\nconst items_=[...txt.matchAll(/<entry>([\\s\\S]*?)<\\/entry>|<item>([\\s\\S]*?)<\\/item>/g)].map(m=>m[1]||m[2]||'');\nconst out=[];\nfor(const it of items_){\n  const title=(it.match(/<title[^>]*>([\\s\\S]*?)<\\/title>/)||[])[1]||'';\n  const link=(it.match(/<link[^>]*href=\"([^\"]+)\"|<link>([^<]+)<\\/link>/)||[]);\n  const url=link[1]||link[2]||'';\n  const pub=Date.parse((it.match(/<(?:published|pubDate|updated)>([^<]+)</)||[])[1]||0)||Date.now();\n  if(pub>=since) out.push({json:{title:title.replace(/<[^>]+>/g,'').trim(), url, snippet:it.replace(/<[^>]+>/g,' ').slice(0,400)}});\n}\nreturn out;"
+        },
+        "id": "127848a2-23e9-44e7-83de-37f46fc43562",
+        "name": "New Mentions",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Mention: {{$json.title}}\n{{$json.snippet}}\nLink: {{$json.url}}",
+          "options": {
+            "systemMessage": "=You monitor online mentions of {{$env.BUSINESS_NAME}}. For this mention, output JSON ONLY: {\"sentiment\":\"positive|negative|neutral\",\"needsReply\":true|false,\"draft\":\"an on-brand public reply if needed, else empty\"}. Negative = calm and solution-focused; positive = warm thanks; never defensive, never share private info."
+          }
+        },
+        "id": "2c183f54-f8c9-4858-8a9b-2c121e986db2",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          860,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "d8f5f2f5-7dfd-405a-8b6c-2cbdd37df4d4",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          820,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "let o={}; try{o=JSON.parse($json.output)}catch(e){o={sentiment:'neutral',needsReply:false,draft:''}} const m=$('New Mentions').item.json; return [{json:{...o,title:m.title,url:m.url}}];"
+        },
+        "id": "5271b579-e806-4927-839a-13548ad9de23",
+        "name": "Parse",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1160,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "=Brand mention ({{$json.sentiment}}): {{$json.title}}",
+          "message": "=New mention of {{$env.BUSINESS_NAME}} ({{$json.sentiment}}):\n{{$json.title}}\n{{$json.url}}\n\nSuggested reply (review before posting):\n{{$json.draft}}",
+          "options": {}
+        },
+        "id": "7f679d0f-9c23-4f60-8a8a-b8b008c7b71c",
+        "name": "Email Mention",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1380,
+          220
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "resource": "message",
+          "operation": "post",
+          "select": "channel",
+          "channelId": {
+            "__rl": true,
+            "value": "={{$env.SLACK_ALERT_CHANNEL}}",
+            "mode": "id"
+          },
+          "text": "=:eyes: Mention of *{{$env.BUSINESS_NAME}}* ({{$json.sentiment}}): {{$json.title}} {{$json.url}}",
+          "otherOptions": {}
+        },
+        "id": "a0d7043e-cffb-4c5a-8c11-f1caf8e1ba80",
+        "name": "Alert if Negative",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.3,
+        "position": [
+          1380,
+          380
+        ],
+        "credentials": {
+          "slackApi": {
+            "id": "9450cf0a-bb9c-40ba-8e2d-936351ed589e",
+            "name": "LOADOUT Slack"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Hourly": {
+        "main": [
+          [
+            {
+              "node": "Fetch Mentions",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Mentions": {
+        "main": [
+          [
+            {
+              "node": "New Mentions",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "New Mentions": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Parse",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse": {
+        "main": [
+          [
+            {
+              "node": "Email Mention",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Alert if Negative",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
   }
 ]

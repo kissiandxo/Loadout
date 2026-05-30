@@ -1,42 +1,37 @@
 #!/usr/bin/env node
-// LOADOUT — Growth Autopilot · installer CLI
-// The buyer's Claude Code runs these subcommands (see install/INSTALL.md).
-// Everything is idempotent and reads secrets only from ../config.env.
+// LOADOUT — Growth Autopilot · installer CLI (API-driven, no Docker)
+// Talks to YOUR already-running n8n over its public REST API. You bring an n8n
+// (n8n Cloud, npm, or a server you run) + an API key; this wires everything in.
 //
-//   node install/loadout.mjs doctor     # check prerequisites + show running cost
-//   node install/loadout.mjs up         # start n8n in Docker
-//   node install/loadout.mjs creds      # create API-key creds; list OAuth to connect
-//   node install/loadout.mjs import     # import all 30 workers + infra
+//   node install/loadout.mjs doctor     # check config + reach your n8n
+//   node install/loadout.mjs creds      # create credentials from config.env
+//   node install/loadout.mjs import     # import/upsert all workers + infra
 //   node install/loadout.mjs activate   # turn every worker on
 //   node install/loadout.mjs verify     # confirm imported + active
-//   node install/loadout.mjs status     # show what's running
-//   node install/loadout.mjs kill       # pause everything (deactivate all)
+//   node install/loadout.mjs setup      # doctor + creds (phase 1)
+//   node install/loadout.mjs go         # import + activate + verify (phase 2)
+//   node install/loadout.mjs status | kill
+//
+// SETUP MODEL: API-key creds (Anthropic/Slack/Twilio) are created fully. OAuth
+// creds (Google) are created as shells; you click Connect once in the n8n UI —
+// the credential id is preserved, so every worker stays linked.
 
-import { execSync, execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync, rmSync, readdirSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { CRED_SPEC } from "../workflows/_ids.mjs";
 
 const INSTALL = dirname(fileURLToPath(import.meta.url));
 const ROOT = dirname(INSTALL);
-const COMPOSE = join(INSTALL, "docker-compose.yml");
 const RUNTIME = join(INSTALL, "_runtime");
 const WF_DIR = join(ROOT, "workflows");
-const CONTAINER = "loadout-n8n";
-
+const CREDMAP = join(RUNTIME, "credmap.json");
 const log = (m) => console.log(m);
-const sh = (cmd, opts = {}) => execSync(cmd, { stdio: "inherit", ...opts });
-const shCap = (cmd) => execSync(cmd, { encoding: "utf8" }).trim();
-const dexec = (args) => execFileSync("docker", ["exec", CONTAINER, ...args], { encoding: "utf8" });
 
-// --- config.env parsing -----------------------------------------------------
+// --- config.env -------------------------------------------------------------
 function loadEnv() {
   const p = join(ROOT, "config.env");
-  if (!existsSync(p)) {
-    log("x config.env not found. Copy the template first:\n    cp config.env.template config.env");
-    process.exit(1);
-  }
+  if (!existsSync(p)) { log("x config.env not found. Run: cp config.env.template config.env"); process.exit(1); }
   const env = {};
   for (const line of readFileSync(p, "utf8").split(/\r?\n/)) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
@@ -49,156 +44,145 @@ function loadEnv() {
 }
 const filled = (env, keys) => keys.every((k) => env[k] && env[k].trim() !== "");
 
-// --- commands ---------------------------------------------------------------
-function doctor() {
-  log("LOADOUT - prerequisite check\n");
-  let ok = true;
-  try { log("  ok Docker: " + shCap("docker --version")); }
-  catch { ok = false; log("  x Docker not found. Install Docker Desktop: https://docker.com/get-started"); }
-  try { shCap("docker compose version"); log("  ok docker compose available"); }
-  catch { ok = false; log("  x docker compose not available (update Docker Desktop)"); }
-  log("  ok Node: " + process.version);
-
-  const env = existsSync(join(ROOT, "config.env")) ? loadEnv() : null;
-  if (!env) { log("  x config.env missing - copy config.env.template to config.env and fill it in."); ok = false; }
-  else {
-    const core = ["BUSINESS_NAME", "OWNER_EMAIL", "ANTHROPIC_API_KEY"];
-    log(filled(env, core) ? "  ok core vars set (BUSINESS_NAME, OWNER_EMAIL, ANTHROPIC_API_KEY)"
-      : "  x fill core vars: BUSINESS_NAME, OWNER_EMAIL, ANTHROPIC_API_KEY");
-    if (!filled(env, core)) ok = false;
-  }
-
-  log("\n-- Running costs you will pay directly (LOADOUT itself is one-time) --");
-  log("  - Anthropic API (powers every AI worker): PAY-PER-USE, ~cents per run.");
-  log("  - Always-on host for n8n: ~$5/mo VPS (or free if you leave this machine on).");
-  log("  - Optional paid tools you turn on: Apollo/Hunter (cold outreach), Twilio (SMS).");
-  log(ok ? "\nok Ready. Next: node install/loadout.mjs up" : "\nx Fix the items above, then re-run doctor.");
-  process.exit(ok ? 0 : 1);
-}
-
-function up() {
-  log("Starting n8n...");
-  sh(`docker compose -f "${COMPOSE}" up -d`);
-  log("Waiting for n8n to come online...");
-  const deadline = Date.now() + 90_000;
-  (async () => {
-    while (Date.now() < deadline) {
-      try {
-        const r = await fetch("http://localhost:5678/healthz");
-        if (r.ok) { log("ok n8n is up at http://localhost:5678"); return; }
-      } catch {}
-      await new Promise((s) => setTimeout(s, 3000));
-    }
-    log("x n8n didn't respond in 90s. Check: docker compose -f install/docker-compose.yml logs");
+// --- n8n REST helper --------------------------------------------------------
+function apiBase(env) {
+  if (!filled(env, ["N8N_API_URL", "N8N_API_KEY"])) {
+    log("x Set N8N_API_URL and N8N_API_KEY in config.env first.");
+    log("  In your n8n: Settings -> n8n API -> Create an API key.");
     process.exit(1);
-  })();
+  }
+  return { url: env.N8N_API_URL.replace(/\/$/, ""), key: env.N8N_API_KEY };
+}
+async function api(env, method, path, body) {
+  const { url, key } = apiBase(env);
+  const res = await fetch(`${url}/api/v1${path}`, {
+    method,
+    headers: { "X-N8N-API-KEY": key, "Content-Type": "application/json", accept: "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  let json; try { json = text ? JSON.parse(text) : {}; } catch { json = { raw: text }; }
+  if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}: ${text.slice(0, 300)}`);
+  return json;
+}
+const loadMap = () => (existsSync(CREDMAP) ? JSON.parse(readFileSync(CREDMAP, "utf8")) : {});
+const saveMap = (m) => { if (!existsSync(RUNTIME)) mkdirSync(RUNTIME, { recursive: true }); writeFileSync(CREDMAP, JSON.stringify(m, null, 2)); };
+
+// --- commands ---------------------------------------------------------------
+async function doctor() {
+  log("LOADOUT — prerequisite check (no Docker; you run n8n)\n");
+  log("  ok Node: " + process.version);
+  const env = existsSync(join(ROOT, "config.env")) ? loadEnv() : null;
+  if (!env) { log("  x config.env missing — cp config.env.template config.env, then fill it."); process.exit(1); }
+  const core = ["BUSINESS_NAME", "OWNER_EMAIL", "ANTHROPIC_API_KEY", "N8N_API_URL", "N8N_API_KEY"];
+  if (!filled(env, core)) { log("  x fill core vars: " + core.join(", ")); process.exit(1); }
+  log("  ok core vars set");
+  try { const r = await api(env, "GET", "/workflows?limit=1"); log(`  ok reached your n8n at ${env.N8N_API_URL} (API key valid)`); }
+  catch (e) { log("  x could not reach your n8n / API key rejected:\n     " + e.message); process.exit(1); }
+  log("\n-- Running costs you pay directly (LOADOUT is one-time) --");
+  log("  - Anthropic API: pay-per-use, ~cents per AI run.");
+  log("  - Your n8n host (n8n Cloud, a VPS, or a box you keep on).");
+  log("  - Optional paid tools you enable (Apollo/Hunter, Twilio, image gen, etc).");
+  log("\nok Ready. Next: node install/loadout.mjs setup");
 }
 
-function creds() {
+async function creds() {
   const env = loadEnv();
-  if (!existsSync(RUNTIME)) mkdirSync(RUNTIME, { recursive: true });
-  const toImport = [];
-  const oauthPending = [];
-  const skipped = [];
-  for (const [, spec] of Object.entries(CRED_SPEC)) {
+  const map = loadMap();
+  const oauthPending = [], skipped = [];
+  for (const [key, spec] of Object.entries(CRED_SPEC)) {
+    if (map[spec.type]) { if (spec.oauth) oauthPending.push(spec.name); continue; } // already created
     if (!filled(env, spec.requires)) { skipped.push(`${spec.name} (missing: ${spec.requires.join(", ")})`); continue; }
-    toImport.push({ id: spec.id, name: spec.name, type: spec.type, data: spec.data(env) });
-    if (spec.oauth) oauthPending.push(spec.name);
+    try {
+      const created = await api(env, "POST", "/credentials", { name: spec.name, type: spec.type, data: spec.data(env) });
+      map[spec.type] = created.id;
+      log(`  ok created credential: ${spec.name}`);
+      if (spec.oauth) oauthPending.push(spec.name);
+    } catch (e) { log(`  x failed to create ${spec.name}: ${e.message}`); }
   }
-  if (!toImport.length) { log("No credentials have values yet. Fill config.env, then re-run."); return; }
-
-  const file = join(RUNTIME, "creds.json");
-  writeFileSync(file, JSON.stringify(toImport, null, 2));
-  try {
-    log(dexec(["n8n", "import:credentials", "--input=/data/creds.json"]));
-    log(`ok Imported ${toImport.length} credential(s).`);
-  } finally {
-    rmSync(file, { force: true }); // never leave secrets on disk
-  }
-
-  if (skipped.length) log("\n  Skipped (no value yet - fine if you're not using them):\n   - " + skipped.join("\n   - "));
+  saveMap(map);
+  if (skipped.length) log("\n  Skipped (no value yet — fine if unused):\n   - " + skipped.join("\n   - "));
   if (oauthPending.length) {
-    log("\n-- ONE-TIME CONNECT (do this in your browser) --------------------");
-    log("  Open http://localhost:5678 -> Credentials. For each below, click it,");
-    log("  press 'Connect my account', and Approve on the provider screen:");
+    log("\n-- ONE-TIME CONNECT (in your browser) --------------------------");
+    log("  Open your n8n -> Credentials. For each below, open it, click");
+    log("  'Connect my account', and Approve. The id is preserved, so workers stay linked:");
     for (const n of oauthPending) log(`   - ${n}`);
-    log("  (Editing keeps the credential's id, so all workers stay linked.)");
   }
+  log("\nWhen Google is connected, finish with: node install/loadout.mjs go");
 }
 
-function importWorkflows() {
+async function importWorkflows() {
+  const env = loadEnv();
+  const map = loadMap();
+  if (!Object.keys(map).length) log("  ! no credentials created yet — run `creds` first (workers will import but stay unlinked).");
+  const existing = (await api(env, "GET", "/workflows?limit=250")).data || [];
+  const byName = new Map(existing.map((w) => [w.name, w.id]));
   const files = readdirSync(WF_DIR).filter((f) => f.endsWith(".json"));
+  let count = 0;
   for (const f of files) {
-    log(`Importing ${f}...`);
-    log(dexec(["n8n", "import:workflow", `--input=/workflows/${f}`]));
+    const wfs = JSON.parse(readFileSync(join(WF_DIR, f), "utf8"));
+    for (const w of wfs) {
+      // rewrite each node's credential id to the real one this n8n assigned
+      for (const node of w.nodes) {
+        if (!node.credentials) continue;
+        for (const type of Object.keys(node.credentials)) {
+          if (map[type]) node.credentials[type] = { id: map[type], name: node.credentials[type].name };
+        }
+      }
+      const payload = { name: w.name, nodes: w.nodes, connections: w.connections, settings: w.settings || { executionOrder: "v1" } };
+      try {
+        if (byName.has(w.name)) await api(env, "PUT", `/workflows/${byName.get(w.name)}`, payload);
+        else { const c = await api(env, "POST", "/workflows", payload); byName.set(w.name, c.id); }
+        count++;
+      } catch (e) { log(`  x ${w.name}: ${e.message}`); }
+    }
+    log(`  ok ${f}`);
   }
-  log(`ok Imported ${files.length} workflow file(s) (all workers + infra).`);
+  log(`ok Imported/updated ${count} workflows (all workers + infra).`);
 }
 
-function activate() {
-  log(dexec(["n8n", "update:workflow", "--all", "--active=true"]));
-  log("ok All workers activated.");
+async function activate() {
+  const env = loadEnv();
+  const list = (await api(env, "GET", "/workflows?limit=250")).data || [];
+  let on = 0;
+  for (const w of list) {
+    if (w.active) { on++; continue; }
+    try { await api(env, "POST", `/workflows/${w.id}/activate`); on++; }
+    catch (e) { log(`  ! couldn't activate ${w.name}: ${e.message.slice(0, 120)}`); }
+  }
+  log(`ok ${on}/${list.length} workflows active.`);
 }
 
-function verify() {
-  const out = dexec(["n8n", "list:workflow"]);
-  const lines = out.split(/\r?\n/).filter((l) => l.trim());
-  log(out);
-  log(`\nok ${lines.length} workflows present in n8n.`);
-  log("  Test a live worker now, e.g. lead capture:");
-  log(`    curl -X POST http://localhost:5678/webhook/loadout-lead-capture \\`);
-  log(`      -H "Content-Type: application/json" \\`);
-  log(`      -d '{"name":"Test Lead","email":"test@example.com","source":"verify"}'`);
-  log("  Then check your CRM sheet + owner email. Fix any worker that errors before relying on it.");
+async function verify() {
+  const env = loadEnv();
+  const list = (await api(env, "GET", "/workflows?limit=250")).data || [];
+  const active = list.filter((w) => w.active).length;
+  log(`Workflows in your n8n: ${list.length} (active: ${active})`);
+  log("\nTest a live worker (lead capture):");
+  log(`  curl -X POST ${env.N8N_API_URL.replace(/\/$/, "")}/webhook/loadout-lead-capture \\`);
+  log(`    -H "Content-Type: application/json" \\`);
+  log(`    -d '{"name":"Test Lead","email":"test@example.com","source":"verify"}'`);
+  log("Then check your CRM sheet + owner email. Fix any worker that errors before relying on it.");
 }
 
-function status() {
-  sh(`docker compose -f "${COMPOSE}" ps`);
-  try { log("\n" + dexec(["n8n", "list:workflow"])); } catch {}
+async function status() {
+  const env = loadEnv();
+  const list = (await api(env, "GET", "/workflows?limit=250")).data || [];
+  for (const w of list) log(`  [${w.active ? "ON " : "off"}] ${w.name}`);
+  log(`\n${list.length} workflows.`);
 }
 
-function kill() {
-  log(dexec(["n8n", "update:workflow", "--all", "--active=false"]));
+async function kill() {
+  const env = loadEnv();
+  const list = (await api(env, "GET", "/workflows?limit=250")).data || [];
+  for (const w of list) if (w.active) { try { await api(env, "POST", `/workflows/${w.id}/deactivate`); } catch {} }
   log("ok Everything paused. Re-run `activate` to resume.");
 }
 
-// one-command guided install (two phases around the browser OAuth step)
-function setup() {
-  log("=== LOADOUT setup — phase 1 of 2 ===\n");
-  doctorSoft();
-  up();
-  // up() is async (waits for healthz); give it a beat, then creds
-  setTimeout(() => {
-    creds();
-    log("\n=== Phase 1 done. ===");
-    log("If any OAuth credentials were listed above, connect them now in your");
-    log("browser (http://localhost:5678 -> Credentials -> Connect -> Approve).");
-    log("\nThen finish with:  node install/loadout.mjs go");
-  }, 8000);
-}
-
-// phase 2: import + activate + verify (run after OAuth connect)
-function go() {
-  log("=== LOADOUT setup — phase 2 of 2 ===\n");
-  importWorkflows();
-  activate();
-  verify();
-  log("\nYour AI staff are live. Pause anytime: node install/loadout.mjs kill");
-}
-
-// non-exiting prereq check used inside setup()
-function doctorSoft() {
-  try { log("ok Docker: " + shCap("docker --version")); }
-  catch { log("x Docker missing — install Docker Desktop, then re-run setup."); process.exit(1); }
-  if (!existsSync(join(ROOT, "config.env"))) {
-    log("x config.env missing. Run: cp config.env.template config.env  (then fill it in)"); process.exit(1);
-  }
-}
+async function setup() { log("=== LOADOUT setup — phase 1 ===\n"); await doctor(); await creds(); }
+async function go() { log("=== LOADOUT setup — phase 2 ===\n"); await importWorkflows(); await activate(); await verify(); log("\nYour AI staff are live. Pause anytime: node install/loadout.mjs kill"); }
 
 const cmd = process.argv[2];
-const table = { doctor, setup, go, up, creds, import: importWorkflows, activate, verify, status, kill };
-if (!table[cmd]) {
-  log("Usage: node install/loadout.mjs <doctor|up|creds|import|activate|verify|status|kill>");
-  process.exit(1);
-}
-table[cmd]();
+const table = { doctor, creds, import: importWorkflows, activate, verify, setup, go, status, kill };
+if (!table[cmd]) { log("Usage: node install/loadout.mjs <doctor|setup|creds|go|import|activate|verify|status|kill>"); process.exit(1); }
+table[cmd]().catch((e) => { log("x " + e.message); process.exit(1); });

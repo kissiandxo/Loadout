@@ -918,5 +918,138 @@
       "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
     },
     "active": false
+  },
+  {
+    "id": "4c4cd675-ca8a-43a9-80ed-ad0cb1f2e934",
+    "name": "E27 — Stock / Inventory Alert",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "hoursInterval": 3
+              }
+            ]
+          }
+        },
+        "id": "45e3b8ed-8b16-45ff-8581-e139b9a0ef98",
+        "name": "Every 3 hours",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Inventory",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "7dabc854-5568-44df-8129-e19f87042ba9",
+        "name": "Read Inventory",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          420,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const floor=parseFloat($env.STOCK_THRESHOLD||'5');\nconst low=items.map(i=>i.json).filter(r=>r.quantity!==undefined && parseFloat(r.quantity)<=parseFloat(r.reorderAt||floor));\nif(!low.length) return [];\nconst list=low.map(r=>`${r.name||r.sku} (${r.quantity} left)`).join('\\n');\nreturn [{json:{count:low.length, list}}];"
+        },
+        "id": "9cb53b27-fa37-48f4-8bda-da98a20bce8e",
+        "name": "Find Low Stock",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "=Low stock — {{$json.count}} item(s) need reordering",
+          "message": "=These items are at/below their reorder level:\n\n{{$json.list}}\n\nReorder soon to avoid stockouts.",
+          "options": {}
+        },
+        "id": "935f2371-65c6-4eb5-8885-00bd5ec679ca",
+        "name": "Low Stock Alert",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          880,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Every 3 hours": {
+        "main": [
+          [
+            {
+              "node": "Read Inventory",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Inventory": {
+        "main": [
+          [
+            {
+              "node": "Find Low Stock",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Low Stock": {
+        "main": [
+          [
+            {
+              "node": "Low Stock Alert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
   }
 ]

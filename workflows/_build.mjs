@@ -475,6 +475,78 @@ function buildLeadGen() {
     wfs.push(workflow("A8 — Abandoned Quote / Cart Recovery (AI)", [trig, read, stale, ...ai.nodes, send, log], conn));
   }
 
+  // A9 — Upsell / Cross-sell Recommender (AI)
+  {
+    const wf = "a/upsell";
+    const trig = N(wf, "Daily 11am", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", triggerAtHour: 11 }] } }, 200, 300);
+    const read = N(wf, "Read Orders", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CRM_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Orders", mode: "name" }, options: {},
+    }, 420, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const products = N(wf, "Read Products", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CRM_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Products", mode: "name" }, options: {},
+    }, 420, 460, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const eligible = N(wf, "Recently Purchased", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const now=Date.now();\n" +
+        "const catalog=($('Read Products').all()||[]).map(i=>i.json.name||i.json.product).filter(Boolean).join(', ');\n" +
+        "return items.map(i=>i.json).filter(r=>r.email && (r.status||'')==='completed' && r.upsellSent!=='yes' && r.completedAt && (now-Date.parse(r.completedAt))/86400000<=14).map(r=>({json:{...r, catalog}}));",
+    }, 660, 300);
+    const ai = aiAgent(wf, 880, 300,
+      "=You write upsell/cross-sell emails for {{$env.BUSINESS_NAME}}. Given what the customer bought and the product catalog, recommend the single most logical next purchase and write a short, helpful email (under 90 words). Not pushy. One clear CTA. Output ONLY the email body.",
+      "=Customer {{$json.name}} bought: {{$json.item}}.\nCatalog: {{$json.catalog}}\nRecommend the next buy and write the email.");
+    const send = N(wf, "Send Upsell", "n8n-nodes-base.gmail", 2.1, {
+      sendTo: "={{$('Recently Purchased').item.json.email}}",
+      subject: "=Something that pairs well with your order — {{$env.BUSINESS_NAME}}",
+      message: "={{$json.output}}", options: {},
+    }, 1180, 300, { credentials: CRED.gmail, onError: "continueRegularOutput" });
+    const log = logRun(wf, 1400, 300);
+    const conn = merge([
+      connect(["Daily 11am", "Read Orders", "Recently Purchased", ai.agentName]),
+      { "Read Products": { main: [[]] } },
+      ai.modelConn,
+      connect([ai.agentName, "Send Upsell", "Log Run"]),
+    ]);
+    wfs.push(workflow("A9 — Upsell / Cross-sell Recommender (AI)", [trig, read, products, eligible, ...ai.nodes, send, log], conn));
+  }
+
+  // A10 — Smart Calendar Scheduler (AI)
+  {
+    const wf = "a/smart-calendar";
+    const trig = N(wf, "Scheduling Email", "n8n-nodes-base.gmailTrigger", 1.2,
+      { pollTimes: { item: [{ mode: "everyMinute" }] }, simple: true, filters: { q: "find a time OR book OR schedule OR meeting OR call" } },
+      220, 300, { credentials: CRED.gmail });
+    const busy = N(wf, "Read Calendar", "n8n-nodes-base.googleCalendar", 1.3, {
+      resource: "event", operation: "getAll",
+      calendar: { __rl: true, value: "={{$env.GOOGLE_CALENDAR_ID || 'primary'}}", mode: "id" },
+      returnAll: false, limit: 20, options: {},
+    }, 460, 300, { credentials: CRED.calendar, onError: "continueRegularOutput" });
+    const pack = N(wf, "Pack Busy", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const ev=($('Read Calendar').all()||[]).map(i=>i.json).map(e=>`${e.start?.dateTime||e.start?.date||''} - ${e.end?.dateTime||e.end?.date||''}`);\n" +
+        "const m=$('Scheduling Email').item.json;\n" +
+        "return [{json:{busy:ev.join('; ')||'nothing booked', from:m.from, subject:m.subject, body:m.snippet||m.text||''}}];",
+    }, 680, 300);
+    const ai = aiAgent(wf, 900, 300,
+      "=You schedule meetings for {{$env.BUSINESS_NAME}} in timezone {{$env.TZ}}. Given the requester's email and the owner's busy times, propose THREE specific open slots (date + time + tz) over the next 5 business days that avoid the busy list, and write a short friendly reply offering them. Output ONLY the reply body.",
+      "=Requester: {{$json.from}} | Subject: {{$json.subject}}\nTheir message: {{$json.body}}\nOwner busy times: {{$json.busy}}");
+    const draft = N(wf, "Draft Reply", "n8n-nodes-base.gmail", 2.1, {
+      resource: "draft", operation: "create",
+      subject: "=Re: {{$('Scheduling Email').item.json.subject}}",
+      message: "={{$json.output}}", options: { sendTo: "={{$('Scheduling Email').item.json.from}}" },
+    }, 1200, 300, { credentials: CRED.gmail, onError: "continueRegularOutput" });
+    const conn = merge([
+      connect(["Scheduling Email", "Read Calendar", "Pack Busy", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Draft Reply"]),
+    ]);
+    wfs.push(workflow("A10 — Smart Calendar Scheduler (AI)", [trig, busy, pack, ...ai.nodes, draft], conn));
+  }
+
   return wfs;
 }
 
@@ -714,6 +786,59 @@ function buildReputation() {
     wfs.push(workflow("C16 — Referral Request Automation",
       [trig, read, happy, mail, log],
       connect(["Daily 3pm", "Read Jobs", "Happy & Eligible", "Ask for Referral", "Log Run"])));
+  }
+
+  // C17 — Brand Mention Monitor (AI)
+  {
+    const wf = "c/brand-mention";
+    const trig = N(wf, "Hourly", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours" }] } }, 200, 300);
+    // pull mentions from a feed (default: a Google Alerts RSS for your brand)
+    const fetch = N(wf, "Fetch Mentions", "n8n-nodes-base.httpRequest", 4.2, {
+      method: "GET", url: "={{$env.BRAND_MENTION_FEED_URL}}", options: {},
+    }, 420, 300, { onError: "continueErrorOutput", retryOnFail: true });
+    const parse = N(wf, "New Mentions", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const raw=$json.data||$json.body||JSON.stringify($json);\n" +
+        "const txt=typeof raw==='string'?raw:JSON.stringify(raw);\n" +
+        "const since=Date.now()-3600000;\n" +
+        "// crude RSS item split; works for Google Alerts / most feeds\n" +
+        "const items_=[...txt.matchAll(/<entry>([\\s\\S]*?)<\\/entry>|<item>([\\s\\S]*?)<\\/item>/g)].map(m=>m[1]||m[2]||'');\n" +
+        "const out=[];\n" +
+        "for(const it of items_){\n" +
+        "  const title=(it.match(/<title[^>]*>([\\s\\S]*?)<\\/title>/)||[])[1]||'';\n" +
+        "  const link=(it.match(/<link[^>]*href=\"([^\"]+)\"|<link>([^<]+)<\\/link>/)||[]);\n" +
+        "  const url=link[1]||link[2]||'';\n" +
+        "  const pub=Date.parse((it.match(/<(?:published|pubDate|updated)>([^<]+)</)||[])[1]||0)||Date.now();\n" +
+        "  if(pub>=since) out.push({json:{title:title.replace(/<[^>]+>/g,'').trim(), url, snippet:it.replace(/<[^>]+>/g,' ').slice(0,400)}});\n" +
+        "}\nreturn out;",
+    }, 640, 300);
+    const ai = aiAgent(wf, 860, 300,
+      "=You monitor online mentions of {{$env.BUSINESS_NAME}}. For this mention, output JSON ONLY: {\"sentiment\":\"positive|negative|neutral\",\"needsReply\":true|false,\"draft\":\"an on-brand public reply if needed, else empty\"}. Negative = calm and solution-focused; positive = warm thanks; never defensive, never share private info.",
+      "=Mention: {{$json.title}}\n{{$json.snippet}}\nLink: {{$json.url}}");
+    const parse2 = N(wf, "Parse", "n8n-nodes-base.code", 2, {
+      jsCode: "let o={}; try{o=JSON.parse($json.output)}catch(e){o={sentiment:'neutral',needsReply:false,draft:''}} const m=$('New Mentions').item.json; return [{json:{...o,title:m.title,url:m.url}}];",
+    }, 1160, 300);
+    const mail = notifyOwnerEmail(wf, "Email Mention", 1380, 220,
+      "=Brand mention ({{$json.sentiment}}): {{$json.title}}",
+      "=New mention of {{$env.BUSINESS_NAME}} ({{$json.sentiment}}):\n{{$json.title}}\n{{$json.url}}\n\nSuggested reply (review before posting):\n{{$json.draft}}");
+    const slack = N(wf, "Alert if Negative", "n8n-nodes-base.slack", 2.3, {
+      resource: "message", operation: "post", select: "channel",
+      channelId: { __rl: true, value: "={{$env.SLACK_ALERT_CHANNEL}}", mode: "id" },
+      text: "=:eyes: Mention of *{{$env.BUSINESS_NAME}}* ({{$json.sentiment}}): {{$json.title}} {{$json.url}}", otherOptions: {},
+    }, 1380, 380, { credentials: CRED.slack, onError: "continueRegularOutput" });
+    const conn = merge([
+      connect(["Hourly", "Fetch Mentions"]),
+      connect([], [{ from: "Fetch Mentions", to: "New Mentions", outputIndex: 0 }]),
+      connect(["New Mentions", ai.agentName]),
+      ai.modelConn,
+      connect([], [
+        { from: ai.agentName, to: "Parse" },
+        { from: "Parse", to: "Email Mention" },
+        { from: "Parse", to: "Alert if Negative" },
+      ]),
+    ]);
+    wfs.push(workflow("C17 — Brand Mention Monitor (AI)", [trig, fetch, parse, ...ai.nodes, parse2, mail, slack], conn));
   }
 
   return wfs;
@@ -1176,6 +1301,33 @@ function buildOperations() {
       { from: "Route by Type", to: "Log Decision Queue" },
     ]);
     wfs.push(workflow("E26 — Internal Approval Router", [trig, route, slack, log], conn));
+  }
+
+  // E27 — Stock / Inventory Alert (AI-light)
+  {
+    const wf = "e/stock-alert";
+    const trig = N(wf, "Every 3 hours", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours", hoursInterval: 3 }] } }, 200, 300);
+    // default source: an Inventory tab (name, sku, quantity, reorderAt, supplierEmail).
+    // For Shopify/Square/SQL/custom, swap this node for the matching connector.
+    const read = N(wf, "Read Inventory", "n8n-nodes-base.googleSheets", 4.5, {
+      operation: "read",
+      documentId: { __rl: true, value: "={{$env.CRM_SHEET_ID}}", mode: "id" },
+      sheetName: { __rl: true, value: "Inventory", mode: "name" }, options: {},
+    }, 420, 300, { credentials: CRED.sheets, onError: "continueRegularOutput" });
+    const low = N(wf, "Find Low Stock", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const floor=parseFloat($env.STOCK_THRESHOLD||'5');\n" +
+        "const low=items.map(i=>i.json).filter(r=>r.quantity!==undefined && parseFloat(r.quantity)<=parseFloat(r.reorderAt||floor));\n" +
+        "if(!low.length) return [];\n" +
+        "const list=low.map(r=>`${r.name||r.sku} (${r.quantity} left)`).join('\\n');\n" +
+        "return [{json:{count:low.length, list}}];",
+    }, 640, 300);
+    const mail = notifyOwnerEmail(wf, "Low Stock Alert", 880, 300,
+      "=Low stock — {{$json.count}} item(s) need reordering",
+      "=These items are at/below their reorder level:\n\n{{$json.list}}\n\nReorder soon to avoid stockouts.");
+    const conn = connect(["Every 3 hours", "Read Inventory", "Find Low Stock", "Low Stock Alert"]);
+    wfs.push(workflow("E27 — Stock / Inventory Alert", [trig, read, low, mail], conn));
   }
 
   return wfs;

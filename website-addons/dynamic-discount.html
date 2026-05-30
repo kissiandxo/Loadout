@@ -1,0 +1,76 @@
+<!--
+  LOADOUT — Dynamic Discount / Win-back Offer (website add-on)
+  ============================================================
+  This is NOT an n8n worker — it lives on your WEBSITE. It shows a one-time
+  discount popup to a visitor who is about to leave (exit-intent) or who has
+  come back a second time without buying. It's plain HTML/JS — no dependencies,
+  no framework — so it pastes into almost any site.
+
+  HOW TO INSTALL (your Claude Code / web person does this once):
+  - Generic HTML site: paste this whole block before </body>.
+  - WordPress: add via a "custom HTML / footer scripts" plugin or theme footer.
+  - Shopify: Online Store -> Themes -> Edit code -> theme.liquid, before </body>.
+  - Wix/Squarespace: add an "embed/custom code" block in site-wide footer.
+
+  CONFIGURE: edit the CONFIG block below (code, message, colours).
+  The coupon code is whatever you create in your store/checkout.
+-->
+<div id="loadout-offer" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;font-family:system-ui,Segoe UI,Roboto,sans-serif">
+  <div style="background:#fff;max-width:420px;width:90%;border-radius:16px;padding:28px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <button id="loadout-offer-x" aria-label="Close" style="position:absolute;background:none;border:0;font-size:22px;cursor:pointer;margin:-12px 0 0 360px;color:#888">&times;</button>
+    <h2 id="loadout-offer-title" style="margin:0 0 8px;font-size:24px;color:#111">Wait — here's 10% off</h2>
+    <p id="loadout-offer-sub" style="margin:0 0 18px;color:#555;font-size:15px">Still thinking it over? Use this code at checkout.</p>
+    <div id="loadout-offer-code" style="font-size:22px;font-weight:700;letter-spacing:2px;background:#f3f4f6;border:2px dashed #9ca3af;border-radius:10px;padding:12px;margin-bottom:18px">SAVE10</div>
+    <button id="loadout-offer-cta" style="background:#111;color:#fff;border:0;border-radius:10px;padding:12px 22px;font-size:16px;cursor:pointer;width:100%">Copy code &amp; keep shopping</button>
+    <p style="margin:12px 0 0;font-size:12px;color:#9ca3af">One-time offer.</p>
+  </div>
+</div>
+<script>
+(function () {
+  /* ===== CONFIG — edit these ===== */
+  var CONFIG = {
+    code: "SAVE10",
+    title: "Wait — here's 10% off",
+    subtitle: "Still thinking it over? Use this code at checkout.",
+    showOnExitIntent: true,     // fire when the mouse leaves toward the tab bar
+    showOnSecondVisit: true,    // fire for a returning visitor who hasn't converted
+    cooldownDays: 7             // don't nag the same person again for N days
+  };
+  /* ================================ */
+
+  var KEY = "loadout_offer_seen", VKEY = "loadout_visits";
+  function seenRecently() {
+    var t = +localStorage.getItem(KEY) || 0;
+    return Date.now() - t < CONFIG.cooldownDays * 864e5;
+  }
+  function show() {
+    if (seenRecently()) return;
+    var el = document.getElementById("loadout-offer");
+    document.getElementById("loadout-offer-title").textContent = CONFIG.title;
+    document.getElementById("loadout-offer-sub").textContent = CONFIG.subtitle;
+    document.getElementById("loadout-offer-code").textContent = CONFIG.code;
+    el.style.display = "flex";
+    localStorage.setItem(KEY, Date.now());
+  }
+  function close() { document.getElementById("loadout-offer").style.display = "none"; }
+
+  document.getElementById("loadout-offer-x").onclick = close;
+  document.getElementById("loadout-offer-cta").onclick = function () {
+    navigator.clipboard && navigator.clipboard.writeText(CONFIG.code);
+    this.textContent = "Copied! ✓";
+    setTimeout(close, 900);
+  };
+
+  // returning-visitor trigger
+  var visits = (+localStorage.getItem(VKEY) || 0) + 1;
+  localStorage.setItem(VKEY, visits);
+  if (CONFIG.showOnSecondVisit && visits >= 2) setTimeout(show, 6000);
+
+  // exit-intent trigger (desktop)
+  if (CONFIG.showOnExitIntent) {
+    document.addEventListener("mouseout", function (e) {
+      if (e.clientY <= 0 && !e.relatedTarget) show();
+    });
+  }
+})();
+</script>

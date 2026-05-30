@@ -27,6 +27,11 @@ export const CRED_SPEC = {
     requires: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"],
     data: (e) => ({ clientId: e.GOOGLE_OAUTH_CLIENT_ID, clientSecret: e.GOOGLE_OAUTH_CLIENT_SECRET }),
   },
+  calendar: {
+    type: "googleCalendarOAuth2Api", id: id("cred/calendar"), name: "LOADOUT Google Calendar", oauth: true,
+    requires: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"],
+    data: (e) => ({ clientId: e.GOOGLE_OAUTH_CLIENT_ID, clientSecret: e.GOOGLE_OAUTH_CLIENT_SECRET }),
+  },
   slack: {
     type: "slackApi", id: id("cred/slack"), name: "LOADOUT Slack", oauth: false,
     requires: ["SLACK_BOT_TOKEN"],

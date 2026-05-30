@@ -1674,5 +1674,491 @@
       "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
     },
     "active": false
+  },
+  {
+    "id": "8ecee878-d788-4cc8-81ac-0b4d393bfef2",
+    "name": "A9 — Upsell / Cross-sell Recommender (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "triggerAtHour": 11
+              }
+            ]
+          }
+        },
+        "id": "124daf4e-5fe7-4c78-8308-5e490f8ab637",
+        "name": "Daily 11am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Orders",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "a288d3db-b3ff-4d16-8456-2b4d8f82b1f0",
+        "name": "Read Orders",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          420,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.CRM_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Products",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "8227974a-b55f-4b76-862d-41c1ae5edd95",
+        "name": "Read Products",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          420,
+          460
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const now=Date.now();\nconst catalog=($('Read Products').all()||[]).map(i=>i.json.name||i.json.product).filter(Boolean).join(', ');\nreturn items.map(i=>i.json).filter(r=>r.email && (r.status||'')==='completed' && r.upsellSent!=='yes' && r.completedAt && (now-Date.parse(r.completedAt))/86400000<=14).map(r=>({json:{...r, catalog}}));"
+        },
+        "id": "1c67c8d6-2efc-4330-89c7-95364f5f28a4",
+        "name": "Recently Purchased",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Customer {{$json.name}} bought: {{$json.item}}.\nCatalog: {{$json.catalog}}\nRecommend the next buy and write the email.",
+          "options": {
+            "systemMessage": "=You write upsell/cross-sell emails for {{$env.BUSINESS_NAME}}. Given what the customer bought and the product catalog, recommend the single most logical next purchase and write a short, helpful email (under 90 words). Not pushy. One clear CTA. Output ONLY the email body."
+          }
+        },
+        "id": "51e4388b-1f31-493f-84a9-9e7bcbea3c2b",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          880,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "5714495a-2cd9-4784-8445-2dfa772172d3",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          840,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$('Recently Purchased').item.json.email}}",
+          "subject": "=Something that pairs well with your order — {{$env.BUSINESS_NAME}}",
+          "message": "={{$json.output}}",
+          "options": {}
+        },
+        "id": "f7e82e98-35f6-43f3-86e1-f447c467d608",
+        "name": "Send Upsell",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1180,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "={{$env.LOADOUT_LOG_SHEET_ID}}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Runs",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {}
+          },
+          "options": {}
+        },
+        "id": "d7fc6dc7-a78d-499b-824a-b3a9410a141e",
+        "name": "Log Run",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          1400,
+          300
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "1ad26f39-94aa-4474-89d2-fd04f43363f1",
+            "name": "LOADOUT Google Sheets"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Daily 11am": {
+        "main": [
+          [
+            {
+              "node": "Read Orders",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Orders": {
+        "main": [
+          [
+            {
+              "node": "Recently Purchased",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Recently Purchased": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Products": {
+        "main": [
+          []
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Send Upsell",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Upsell": {
+        "main": [
+          [
+            {
+              "node": "Log Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
+  },
+  {
+    "id": "56dc1484-ee3a-492d-8a97-89745402ee84",
+    "name": "A10 — Smart Calendar Scheduler (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyMinute"
+              }
+            ]
+          },
+          "simple": true,
+          "filters": {
+            "q": "find a time OR book OR schedule OR meeting OR call"
+          }
+        },
+        "id": "05ec3e0f-f853-4ce7-8e34-dac9704875bd",
+        "name": "Scheduling Email",
+        "type": "n8n-nodes-base.gmailTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "event",
+          "operation": "getAll",
+          "calendar": {
+            "__rl": true,
+            "value": "={{$env.GOOGLE_CALENDAR_ID || 'primary'}}",
+            "mode": "id"
+          },
+          "returnAll": false,
+          "limit": 20,
+          "options": {}
+        },
+        "id": "de751053-72e0-4cc3-891e-0abf5c8e0014",
+        "name": "Read Calendar",
+        "type": "n8n-nodes-base.googleCalendar",
+        "typeVersion": 1.3,
+        "position": [
+          460,
+          300
+        ],
+        "credentials": {
+          "googleCalendarOAuth2Api": {
+            "id": "ba553ea3-3135-4ffc-841c-dbdf681d68b1",
+            "name": "LOADOUT Google Calendar"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const ev=($('Read Calendar').all()||[]).map(i=>i.json).map(e=>`${e.start?.dateTime||e.start?.date||''} - ${e.end?.dateTime||e.end?.date||''}`);\nconst m=$('Scheduling Email').item.json;\nreturn [{json:{busy:ev.join('; ')||'nothing booked', from:m.from, subject:m.subject, body:m.snippet||m.text||''}}];"
+        },
+        "id": "1cccec36-6c23-41da-83bc-6e34537cff43",
+        "name": "Pack Busy",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          680,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Requester: {{$json.from}} | Subject: {{$json.subject}}\nTheir message: {{$json.body}}\nOwner busy times: {{$json.busy}}",
+          "options": {
+            "systemMessage": "=You schedule meetings for {{$env.BUSINESS_NAME}} in timezone {{$env.TZ}}. Given the requester's email and the owner's busy times, propose THREE specific open slots (date + time + tz) over the next 5 business days that avoid the busy list, and write a short friendly reply offering them. Output ONLY the reply body."
+          }
+        },
+        "id": "a3703791-10b6-4664-8487-2ea04f904f89",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          900,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "a38a41eb-4baf-42af-8542-20ed4f6fb65a",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          860,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "draft",
+          "operation": "create",
+          "subject": "=Re: {{$('Scheduling Email').item.json.subject}}",
+          "message": "={{$json.output}}",
+          "options": {
+            "sendTo": "={{$('Scheduling Email').item.json.from}}"
+          }
+        },
+        "id": "cb4718d3-7e1d-43da-8659-628070b00ac4",
+        "name": "Draft Reply",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1200,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Scheduling Email": {
+        "main": [
+          [
+            {
+              "node": "Read Calendar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Calendar": {
+        "main": [
+          [
+            {
+              "node": "Pack Busy",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Pack Busy": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Draft Reply",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
   }
 ]
