@@ -986,5 +986,413 @@
       "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
     },
     "active": false
+  },
+  {
+    "id": "c1f2a440-ac6a-4857-8049-d7dce8fd30b8",
+    "name": "D21 — Competitor Post Responder (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours"
+              }
+            ]
+          }
+        },
+        "id": "502b1b86-e27e-4d0b-80e3-e1ae529d32c4",
+        "name": "Hourly",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          180,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "return ($env.COMPETITOR_IG_USERNAMES||'').split(',').map(u=>u.trim()).filter(Boolean).map(u=>({json:{username:u}}));"
+        },
+        "id": "9c112e81-7b03-4953-89dc-a9eb3de30aa8",
+        "name": "Each Competitor",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          380,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://graph.facebook.com/v19.0/{{$env.IG_BUSINESS_ACCOUNT_ID}}",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "fields",
+                "value": "=business_discovery.username({{$json.username}}){media.limit(3){id,caption,media_type,media_url,permalink,timestamp}}"
+              },
+              {
+                "name": "access_token",
+                "value": "={{$env.IG_GRAPH_TOKEN}}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "7f5451e5-56f6-4fc2-8133-d13efa0a6c3f",
+        "name": "Fetch IG Posts",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          600,
+          300
+        ],
+        "onError": "continueErrorOutput",
+        "retryOnFail": true
+      },
+      {
+        "parameters": {
+          "jsCode": "const bd=$json.business_discovery||{}; const media=(bd.media&&bd.media.data)||[];\nconst since=Date.now()-3600000;\nreturn media.filter(m=>m.timestamp && Date.parse(m.timestamp)>=since).map(m=>({json:{\n  competitor: bd.username, caption: m.caption||'', mediaType: m.media_type,\n  refImage: m.media_url||'', permalink: m.permalink||''\n}}));"
+        },
+        "id": "222e4cd2-b3bd-415d-8dd4-283939d430ce",
+        "name": "New Posts Only",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          820,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Competitor: {{$json.competitor}}\nTheir post type: {{$json.mediaType}}\nTheir caption: {{$json.caption}}\nReference link: {{$json.permalink}}",
+          "options": {
+            "systemMessage": "=You react to a competitor's social post for {{$env.BUSINESS_NAME}}. Using the competitor's post ONLY as loose inspiration (never copy it — that's their copyright), design an ORIGINAL on-brand post. Output ONLY valid JSON: {\"concept\":\"one line\",\"imagePrompt\":\"a detailed text-to-image prompt for an original branded image, no logos/text of the competitor\",\"caption\":\"the post caption in our brand voice with 3-5 hashtags\"}."
+          }
+        },
+        "id": "ea5111ce-f956-4447-8af3-334f705a3c81",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          1040,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "5bb6acc1-abb3-4312-8c6d-2ef8b113064f",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          1000,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "let o={}; try{o=JSON.parse($json.output)}catch(e){o={concept:'',imagePrompt:$json.output,caption:''}} return [{json:{...o, competitor:$('New Posts Only').item.json.competitor, ref:$('New Posts Only').item.json.permalink}}];"
+        },
+        "id": "878b5e9d-c2ad-4ef1-8d14-bb7d858dd83f",
+        "name": "Parse Concept",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1340,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.IMAGE_GEN_URL}}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{$env.IMAGE_GEN_KEY}}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"prompt\": {{ JSON.stringify($json.imagePrompt) }},\n  \"n\": 1,\n  \"size\": \"1024x1024\"\n}",
+          "options": {}
+        },
+        "id": "cd8e2e61-0631-4f74-8e0c-06183c90fd60",
+        "name": "Generate Image",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1560,
+          300
+        ],
+        "onError": "continueErrorOutput",
+        "retryOnFail": true
+      },
+      {
+        "parameters": {
+          "jsCode": "const j=$json;\n// support common shapes: OpenAI {data:[{url|b64_json}]}, Replicate {output:[url]}, fal {images:[{url}]}\nconst url = (j.data&&j.data[0]&&(j.data[0].url||(j.data[0].b64_json?('data:image/png;base64,'+j.data[0].b64_json):'')))\n  || (Array.isArray(j.output)?j.output[0]:j.output) || (j.images&&j.images[0]&&j.images[0].url) || '';\nconst c=$('Parse Concept').item.json;\nreturn [{json:{imageUrl:url, caption:c.caption, concept:c.concept, competitor:c.competitor, ref:c.ref}}];"
+        },
+        "id": "faa67a78-3538-4f15-8ca7-d1484d439924",
+        "name": "Find Image URL",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1780,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "version": 2
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "id": "ffa27908-e9a1-44f7-84db-43b7dc39c694",
+                "leftValue": "={{$env.SOCIAL_AUTOPUBLISH}}",
+                "rightValue": "true",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "id": "bae28ca0-5493-4d78-8d1b-f6e47d78160a",
+        "name": "Auto-publish on?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2000,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.SOCIAL_PUBLISH_URL}}",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"text\": {{ JSON.stringify($json.caption) }},\n  \"imageUrl\": {{ JSON.stringify($json.imageUrl) }},\n  \"platform\": \"instagram\"\n}",
+          "options": {}
+        },
+        "id": "c35dafbf-b888-4961-8366-97ab6921d200",
+        "name": "Publish (opt-in)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2240,
+          220
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "=New post idea (reacting to {{$json.competitor}}) — approve to publish",
+          "message": "=A competitor ({{$json.competitor}}) just posted. Here's an ORIGINAL response we made for you:\n\nConcept: {{$json.concept}}\n\nCaption:\n{{$json.caption}}\n\nGenerated image: {{$json.imageUrl}}\nTheir post (reference): {{$json.ref}}\n\n(Auto-publish is OFF — post it yourself, or set SOCIAL_AUTOPUBLISH=true to let it publish.)",
+          "options": {}
+        },
+        "id": "a8c5d1af-1fa4-4bb7-8728-a386021ba1a7",
+        "name": "Send Draft for Approval",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          2240,
+          400
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "LOADOUT: competitor post responder couldn't reach Instagram",
+          "message": "=The Instagram business_discovery call failed. Check IG_GRAPH_TOKEN, IG_BUSINESS_ACCOUNT_ID, and that the competitor is a PUBLIC Business/Creator account.",
+          "options": {}
+        },
+        "id": "58074672-399f-4713-813e-a98480ce0e22",
+        "name": "IG Fetch Error",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          600,
+          460
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Hourly": {
+        "main": [
+          [
+            {
+              "node": "Each Competitor",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Each Competitor": {
+        "main": [
+          [
+            {
+              "node": "Fetch IG Posts",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch IG Posts": {
+        "main": [
+          [
+            {
+              "node": "New Posts Only",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "IG Fetch Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "New Posts Only": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Parse Concept",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Concept": {
+        "main": [
+          [
+            {
+              "node": "Generate Image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Generate Image": {
+        "main": [
+          [
+            {
+              "node": "Find Image URL",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Image URL": {
+        "main": [
+          [
+            {
+              "node": "Auto-publish on?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Auto-publish on?": {
+        "main": [
+          [
+            {
+              "node": "Publish (opt-in)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Send Draft for Approval",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
   }
 ]

@@ -820,6 +820,99 @@ function buildContentSocial() {
     wfs.push(workflow("D20 — Competitor Ad Watcher (AI)", [trig, fetch, fresh, ...ai.nodes, mail, errlog], conn));
   }
 
+  // D21 — Competitor Post Responder (AI) — sees a competitor's public IG post,
+  // creates an ORIGINAL on-brand lookalike (image + caption), draft by default.
+  {
+    const wf = "d/post-responder";
+    const trig = N(wf, "Hourly", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "hours" }] } }, 180, 300);
+    // fan out the competitor username list (CSV) into one item each
+    const split = N(wf, "Each Competitor", "n8n-nodes-base.code", 2, {
+      jsCode: "return ($env.COMPETITOR_IG_USERNAMES||'').split(',').map(u=>u.trim()).filter(Boolean).map(u=>({json:{username:u}}));",
+    }, 380, 300);
+    // official IG Graph business_discovery — public Business/Creator accounts only
+    const fetchPosts = N(wf, "Fetch IG Posts", "n8n-nodes-base.httpRequest", 4.2, {
+      method: "GET", url: "=https://graph.facebook.com/v19.0/{{$env.IG_BUSINESS_ACCOUNT_ID}}",
+      sendQuery: true, queryParameters: { parameters: [
+        { name: "fields", value: "=business_discovery.username({{$json.username}}){media.limit(3){id,caption,media_type,media_url,permalink,timestamp}}" },
+        { name: "access_token", value: "={{$env.IG_GRAPH_TOKEN}}" },
+      ] },
+      options: {},
+    }, 600, 300, { onError: "continueErrorOutput", retryOnFail: true });
+    const fresh = N(wf, "New Posts Only", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const bd=$json.business_discovery||{}; const media=(bd.media&&bd.media.data)||[];\n" +
+        "const since=Date.now()-3600000;\n" +
+        "return media.filter(m=>m.timestamp && Date.parse(m.timestamp)>=since).map(m=>({json:{\n" +
+        "  competitor: bd.username, caption: m.caption||'', mediaType: m.media_type,\n" +
+        "  refImage: m.media_url||'', permalink: m.permalink||''\n" +
+        "}}));",
+    }, 820, 300);
+    const ai = aiAgent(wf, 1040, 300,
+      "=You react to a competitor's social post for {{$env.BUSINESS_NAME}}. Using the competitor's post ONLY as loose inspiration (never copy it — that's their copyright), design an ORIGINAL on-brand post. Output ONLY valid JSON: {\"concept\":\"one line\",\"imagePrompt\":\"a detailed text-to-image prompt for an original branded image, no logos/text of the competitor\",\"caption\":\"the post caption in our brand voice with 3-5 hashtags\"}.",
+      "=Competitor: {{$json.competitor}}\nTheir post type: {{$json.mediaType}}\nTheir caption: {{$json.caption}}\nReference link: {{$json.permalink}}");
+    const parse = N(wf, "Parse Concept", "n8n-nodes-base.code", 2, {
+      jsCode: "let o={}; try{o=JSON.parse($json.output)}catch(e){o={concept:'',imagePrompt:$json.output,caption:''}} return [{json:{...o, competitor:$('New Posts Only').item.json.competitor, ref:$('New Posts Only').item.json.permalink}}];",
+    }, 1340, 300);
+    // pluggable image engine: buyer points IMAGE_GEN_URL/KEY at OpenAI/Replicate/fal/etc
+    const gen = N(wf, "Generate Image", "n8n-nodes-base.httpRequest", 4.2, {
+      method: "POST", url: "={{$env.IMAGE_GEN_URL}}",
+      sendHeaders: true, headerParameters: { parameters: [
+        { name: "Authorization", value: "=Bearer {{$env.IMAGE_GEN_KEY}}" },
+        { name: "Content-Type", value: "application/json" },
+      ] },
+      sendBody: true, specifyBody: "json",
+      jsonBody: "={\n  \"prompt\": {{ JSON.stringify($json.imagePrompt) }},\n  \"n\": 1,\n  \"size\": \"1024x1024\"\n}",
+      options: {},
+    }, 1560, 300, { onError: "continueErrorOutput", retryOnFail: true });
+    const pickUrl = N(wf, "Find Image URL", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const j=$json;\n" +
+        "// support common shapes: OpenAI {data:[{url|b64_json}]}, Replicate {output:[url]}, fal {images:[{url}]}\n" +
+        "const url = (j.data&&j.data[0]&&(j.data[0].url||(j.data[0].b64_json?('data:image/png;base64,'+j.data[0].b64_json):'')))\n" +
+        "  || (Array.isArray(j.output)?j.output[0]:j.output) || (j.images&&j.images[0]&&j.images[0].url) || '';\n" +
+        "const c=$('Parse Concept').item.json;\n" +
+        "return [{json:{imageUrl:url, caption:c.caption, concept:c.concept, competitor:c.competitor, ref:c.ref}}];",
+    }, 1780, 300);
+    const gate = N(wf, "Auto-publish on?", "n8n-nodes-base.if", 2, {
+      conditions: { options: { caseSensitive: false, version: 2 }, combinator: "and", conditions: [
+        { id: id(wf + "/g"), leftValue: "={{$env.SOCIAL_AUTOPUBLISH}}", rightValue: "true", operator: { type: "string", operation: "equals" } },
+      ] },
+    }, 2000, 300);
+    const publish = N(wf, "Publish (opt-in)", "n8n-nodes-base.httpRequest", 4.2, {
+      method: "POST", url: "={{$env.SOCIAL_PUBLISH_URL}}",
+      sendBody: true, specifyBody: "json",
+      jsonBody: "={\n  \"text\": {{ JSON.stringify($json.caption) }},\n  \"imageUrl\": {{ JSON.stringify($json.imageUrl) }},\n  \"platform\": \"instagram\"\n}",
+      options: {},
+    }, 2240, 220, { onError: "continueRegularOutput" });
+    const approve = notifyOwnerEmail(wf, "Send Draft for Approval", 2240, 400,
+      "=New post idea (reacting to {{$json.competitor}}) — approve to publish",
+      "=A competitor ({{$json.competitor}}) just posted. Here's an ORIGINAL response we made for you:\n\nConcept: {{$json.concept}}\n\nCaption:\n{{$json.caption}}\n\nGenerated image: {{$json.imageUrl}}\nTheir post (reference): {{$json.ref}}\n\n(Auto-publish is OFF — post it yourself, or set SOCIAL_AUTOPUBLISH=true to let it publish.)");
+    const errlog = notifyOwnerEmail(wf, "IG Fetch Error", 600, 460,
+      "LOADOUT: competitor post responder couldn't reach Instagram",
+      "=The Instagram business_discovery call failed. Check IG_GRAPH_TOKEN, IG_BUSINESS_ACCOUNT_ID, and that the competitor is a PUBLIC Business/Creator account.");
+    const conn = merge([
+      connect(["Hourly", "Each Competitor"]),
+      connect([], [
+        { from: "Each Competitor", to: "Fetch IG Posts" },
+        { from: "Fetch IG Posts", to: "New Posts Only", outputIndex: 0 },
+        { from: "Fetch IG Posts", to: "IG Fetch Error", outputIndex: 1 },
+      ]),
+      connect(["New Posts Only", ai.agentName]),
+      ai.modelConn,
+      connect([], [
+        { from: ai.agentName, to: "Parse Concept", outputIndex: 0 },
+        { from: "Parse Concept", to: "Generate Image" },
+        { from: "Generate Image", to: "Find Image URL", outputIndex: 0 },
+        { from: "Find Image URL", to: "Auto-publish on?" },
+        { from: "Auto-publish on?", to: "Publish (opt-in)", outputIndex: 0 },
+        { from: "Auto-publish on?", to: "Send Draft for Approval", outputIndex: 1 },
+      ]),
+    ]);
+    wfs.push(workflow("D21 — Competitor Post Responder (AI)",
+      [trig, split, fetchPosts, fresh, ...ai.nodes, parse, gen, pickUrl, gate, publish, approve, errlog], conn));
+  }
+
   return wfs;
 }
 

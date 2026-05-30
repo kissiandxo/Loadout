@@ -132,7 +132,7 @@ function importWorkflows() {
     log(`Importing ${f}...`);
     log(dexec(["n8n", "import:workflow", `--input=/workflows/${f}`]));
   }
-  log(`ok Imported ${files.length} workflow file(s) (30 workers + infra).`);
+  log(`ok Imported ${files.length} workflow file(s) (all workers + infra).`);
 }
 
 function activate() {
