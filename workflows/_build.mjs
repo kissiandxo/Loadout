@@ -913,6 +913,59 @@ function buildContentSocial() {
       [trig, split, fetchPosts, fresh, ...ai.nodes, parse, gen, pickUrl, gate, publish, approve, errlog], conn));
   }
 
+  // D22 — Google Ad Watcher (AI) — weekly: pull competitors' live Google ads from
+  // a transparency source, rank by LONGEVITY (proxy for winners — you can't see
+  // their real performance), TL;DR the top ones + draft an original remake idea.
+  {
+    const wf = "d/google-ad-watcher";
+    const trig = N(wf, "Weekly Mon 6am", "n8n-nodes-base.scheduleTrigger", 1.2,
+      { rule: { interval: [{ field: "weeks", triggerAtDay: [1], triggerAtHour: 6 }] } }, 180, 300);
+    // pluggable transparency source (e.g. SerpApi Google Ads Transparency) — no
+    // official Google API exists, so the buyer plugs in their chosen provider.
+    const fetch = N(wf, "Fetch Google Ads", "n8n-nodes-base.httpRequest", 4.2, {
+      method: "GET", url: "={{$env.ADS_TRANSPARENCY_URL}}",
+      sendQuery: true, queryParameters: { parameters: [
+        { name: "advertisers", value: "={{$env.GOOGLE_ADS_ADVERTISERS}}" },
+        { name: "region", value: "={{$env.ADS_COUNTRY || 'AU'}}" },
+        { name: "api_key", value: "={{$env.ADS_TRANSPARENCY_KEY}}" },
+      ] },
+      options: {},
+    }, 400, 300, { onError: "continueErrorOutput", retryOnFail: true });
+    const rank = N(wf, "Rank by Longevity", "n8n-nodes-base.code", 2, {
+      jsCode:
+        "const ads=($input.first().json.ads || $input.first().json.ad_creatives || []);\n" +
+        "const now=Date.now();\n" +
+        "const withRun=ads.map(a=>{const start=Date.parse(a.first_shown||a.first_seen||a.start_date||0)||now; return {...a, daysRunning:Math.max(0,Math.round((now-start)/86400000))};});\n" +
+        "// longest-running = most likely a proven winner (they don't keep losers live)\n" +
+        "const sorted=withRun.sort((x,y)=>y.daysRunning-x.daysRunning);\n" +
+        "const week=sorted.filter(a=>a.daysRunning>=7).slice(0,5);\n" +
+        "const month=sorted.filter(a=>a.daysRunning>=30).slice(0,5);\n" +
+        "const fmt=l=>l.map(a=>`[${a.advertiser||a.page_name||'?'}, ${a.daysRunning}d] ${(a.text||a.body||a.creative||'').toString().slice(0,200)}`).join('\\n')||'none';\n" +
+        "if(!sorted.length) return [{json:{summary:'No live Google ads found for tracked competitors this week.'}}];\n" +
+        "return [{json:{topWeek:fmt(week), topMonth:fmt(month)}}];",
+    }, 620, 300);
+    const ai = aiAgent(wf, 840, 300,
+      "=You analyse competitors' best-performing Google ads for {{$env.BUSINESS_NAME}}. The ads given are ranked by how long they've been running (longest = most likely a proven winner, since advertisers kill losers fast). Write: (1) a TL;DR of the top WEEK and top MONTH long-runners and the angle/offer that makes them work, then (2) ONE original ad concept we could test in response — original copy, never a copy of theirs. Under 200 words. If the input says none found, just relay that.",
+      "=TOP THIS WEEK (by days running):\n{{$json.topWeek}}\n\nTOP THIS MONTH:\n{{$json.topMonth}}\n\n{{$json.summary}}");
+    const mail = notifyOwnerEmail(wf, "Email Ad Brief", 1140, 300,
+      "Google ad watch — weekly + monthly winners + a remake idea",
+      "={{$json.output}}");
+    const errlog = notifyOwnerEmail(wf, "Ads Source Error", 620, 460,
+      "LOADOUT: Google ad watcher couldn't reach the transparency source",
+      "=The Google Ads transparency lookup failed. Check ADS_TRANSPARENCY_URL, ADS_TRANSPARENCY_KEY and GOOGLE_ADS_ADVERTISERS.");
+    const conn = merge([
+      connect(["Weekly Mon 6am", "Fetch Google Ads"]),
+      connect([], [
+        { from: "Fetch Google Ads", to: "Rank by Longevity", outputIndex: 0 },
+        { from: "Fetch Google Ads", to: "Ads Source Error", outputIndex: 1 },
+      ]),
+      connect(["Rank by Longevity", ai.agentName]),
+      ai.modelConn,
+      connect([ai.agentName, "Email Ad Brief"]),
+    ]);
+    wfs.push(workflow("D22 — Google Ad Watcher (AI)", [trig, fetch, rank, ...ai.nodes, mail, errlog], conn));
+  }
+
   return wfs;
 }
 

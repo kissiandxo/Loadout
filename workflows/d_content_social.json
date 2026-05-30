@@ -1394,5 +1394,238 @@
       "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
     },
     "active": false
+  },
+  {
+    "id": "b66e6208-986d-4945-82f0-f87d64869e52",
+    "name": "D22 — Google Ad Watcher (AI)",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "weeks",
+                "triggerAtDay": [
+                  1
+                ],
+                "triggerAtHour": 6
+              }
+            ]
+          }
+        },
+        "id": "e3f7c63d-6187-486f-8338-58d52e9e941e",
+        "name": "Weekly Mon 6am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          180,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "={{$env.ADS_TRANSPARENCY_URL}}",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "advertisers",
+                "value": "={{$env.GOOGLE_ADS_ADVERTISERS}}"
+              },
+              {
+                "name": "region",
+                "value": "={{$env.ADS_COUNTRY || 'AU'}}"
+              },
+              {
+                "name": "api_key",
+                "value": "={{$env.ADS_TRANSPARENCY_KEY}}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "41b859f7-3cbc-46d5-8b25-0768d23ce6e8",
+        "name": "Fetch Google Ads",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          400,
+          300
+        ],
+        "onError": "continueErrorOutput",
+        "retryOnFail": true
+      },
+      {
+        "parameters": {
+          "jsCode": "const ads=($input.first().json.ads || $input.first().json.ad_creatives || []);\nconst now=Date.now();\nconst withRun=ads.map(a=>{const start=Date.parse(a.first_shown||a.first_seen||a.start_date||0)||now; return {...a, daysRunning:Math.max(0,Math.round((now-start)/86400000))};});\n// longest-running = most likely a proven winner (they don't keep losers live)\nconst sorted=withRun.sort((x,y)=>y.daysRunning-x.daysRunning);\nconst week=sorted.filter(a=>a.daysRunning>=7).slice(0,5);\nconst month=sorted.filter(a=>a.daysRunning>=30).slice(0,5);\nconst fmt=l=>l.map(a=>`[${a.advertiser||a.page_name||'?'}, ${a.daysRunning}d] ${(a.text||a.body||a.creative||'').toString().slice(0,200)}`).join('\\n')||'none';\nif(!sorted.length) return [{json:{summary:'No live Google ads found for tracked competitors this week.'}}];\nreturn [{json:{topWeek:fmt(week), topMonth:fmt(month)}}];"
+        },
+        "id": "edb7a4a1-8e72-40a8-8a0b-d55150b1f75e",
+        "name": "Rank by Longevity",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          620,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=TOP THIS WEEK (by days running):\n{{$json.topWeek}}\n\nTOP THIS MONTH:\n{{$json.topMonth}}\n\n{{$json.summary}}",
+          "options": {
+            "systemMessage": "=You analyse competitors' best-performing Google ads for {{$env.BUSINESS_NAME}}. The ads given are ranked by how long they've been running (longest = most likely a proven winner, since advertisers kill losers fast). Write: (1) a TL;DR of the top WEEK and top MONTH long-runners and the angle/offer that makes them work, then (2) ONE original ad concept we could test in response — original copy, never a copy of theirs. Under 200 words. If the input says none found, just relay that."
+          }
+        },
+        "id": "78a1f7d9-51a2-4a75-8268-51f09c7d6166",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          840,
+          300
+        ],
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "claude-sonnet-4-5-20250929"
+          },
+          "options": {}
+        },
+        "id": "7dcb2627-cb69-4522-893f-3826c7b31c88",
+        "name": "Claude (Anthropic)",
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.2,
+        "position": [
+          800,
+          480
+        ],
+        "credentials": {
+          "anthropicApi": {
+            "id": "7001ff2d-e1ea-4f12-893c-cf68e619ec12",
+            "name": "LOADOUT Anthropic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "Google ad watch — weekly + monthly winners + a remake idea",
+          "message": "={{$json.output}}",
+          "options": {}
+        },
+        "id": "090ea465-7c66-412e-8e31-af0758fdaacd",
+        "name": "Email Ad Brief",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1140,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "sendTo": "={{$env.OWNER_EMAIL}}",
+          "subject": "LOADOUT: Google ad watcher couldn't reach the transparency source",
+          "message": "=The Google Ads transparency lookup failed. Check ADS_TRANSPARENCY_URL, ADS_TRANSPARENCY_KEY and GOOGLE_ADS_ADVERTISERS.",
+          "options": {}
+        },
+        "id": "c55e198e-49db-438e-846d-f5f04ffbb6d5",
+        "name": "Ads Source Error",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          620,
+          460
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "da21550e-fb6b-470f-8939-635e709e955d",
+            "name": "LOADOUT Gmail"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Weekly Mon 6am": {
+        "main": [
+          [
+            {
+              "node": "Fetch Google Ads",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Google Ads": {
+        "main": [
+          [
+            {
+              "node": "Rank by Longevity",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Ads Source Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Rank by Longevity": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude (Anthropic)": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Email Ad Brief",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "errorWorkflow": "e6747a50-02dc-46f6-8ad9-ef0c35b9572d"
+    },
+    "active": false
   }
 ]
