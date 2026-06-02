@@ -1,23 +1,26 @@
-# App-mark explorations
+# App-mark explorations — L+T monogram
 
-Three black-&-white, flat-vector directions for the Loadout.ai app mark — a
-modern, geometric reworking of the old gothic symbol. All gothic / serif /
-sparkle / cross detailing has been stripped out in favour of clean rounded
-forms, strong negative space, and a rounded-squircle tile (≈23% corner radius)
-that reads cleanly from a 1024px app icon down to a 20px favicon.
+Modern, black-&-white reworkings of the old gothic mark. The original symbol
+was an **L+T combined** monogram (a vertical stem with a **T** crossbar on top
+and an **L** foot at the bottom) buried under gothic serifs, bone-ends, a cross
+finial, and sparkles. These keep that L+T skeleton and rebuild it as a thick,
+rounded geometric mark with a **subtle forward lean** (for motion, à la
+Linear / Arc), inside a rounded squircle tile (~23% corner radius). All gothic /
+occult / medieval / religious cues are removed. Reads cleanly from a 1024px app
+icon down to a ~20px favicon.
 
-| File | Direction | Reads as |
+| File | Direction | Notes |
 |---|---|---|
-| `01-stack-e.svg` | **Stack · E** — *current primary* | Vertical stem + three rounded bars: an “E” / a loaded stack of modules. Faithful transform of the uploaded symbol. |
-| `02-clean-l.svg` | **Clean · L** | A premium geometric monogram; leans into the “Loadout” name and matches the old brand mark. |
-| `03-bracket.svg` | **Bracket · Lo** | An L-bracket cradling a rounded module — a literal “loadout slot,” also reads as “Lo”. |
+| `tl-02.svg` | **L + T · thick** — *current primary* | Faithful L+T combined; thick rounded bars, gentle ~6° lean. |
+| `tl-01.svg` | **L + T · light** | Same monogram, lighter weight and a wider T-bar. |
+| `tl-03-Lonly.svg` | **L · lean** | Pure “L” monogram with the same forward lean (drops the T). |
 
-- **`options-contact-sheet.png`** — side-by-side comparison (large icon · inverted · favicon).
-- **`preview.html`** — open in a browser to compare live and screenshot.
+- **`options-contact-sheet.png`** — side-by-side comparison (large · inverted · favicon).
+- **`preview.html`** — open in a browser to compare live, including a wordmark lockup.
 
 ## Current primary
 
-`brand/loadout-mark.svg` is currently **Stack · E**, with these companions:
+`brand/loadout-mark.svg` is currently **L + T · thick** (`tl-02`), with companions:
 
 | File | What |
 |---|---|
@@ -32,10 +35,11 @@ that reads cleanly from a 1024px app icon down to a 20px favicon.
 
 1. Copy your chosen option over the primary, e.g.:
    ```sh
-   cp brand/mark-explorations/02-clean-l.svg brand/loadout-mark.svg
+   cp brand/mark-explorations/tl-01.svg brand/loadout-mark.svg
    ```
-   (then mirror its glyph into `loadout-mark-light.svg` / `loadout-mark-glyph.svg`).
-2. Re-export the PNGs. These were rendered with [`@resvg/resvg-js`](https://github.com/yisibl/resvg-js):
+   then mirror its glyph into `loadout-mark-light.svg` (white tile / `#0A0A0B`
+   glyph) and `loadout-mark-glyph.svg` (no tile).
+2. Re-export the PNGs with [`@resvg/resvg-js`](https://github.com/yisibl/resvg-js):
    ```sh
    npm i @resvg/resvg-js
    node -e "const{Resvg}=require('@resvg/resvg-js'),fs=require('fs');\
@@ -45,7 +49,13 @@ that reads cleanly from a 1024px app icon down to a 20px favicon.
    fs.writeFileSync(o,new Resvg(fs.readFileSync(s),{fitTo:{mode:'width',value:w}}).render().asPng());"
    ```
 
+## Tuning the lean
+
+The forward lean is a `skewX(-6)` (or `-8`) on the glyph group, with a small
+`translate(x)` to recenter. Reduce toward `-4` for more upright, increase toward
+`-10` for more motion.
+
 ## Colour
 
 Rich near-black `#0A0A0B` (matches the brand background) + pure white `#FFFFFF`.
-Swap to literal `#000000` if you prefer absolute black.
+Swap to literal `#000000` for absolute black.

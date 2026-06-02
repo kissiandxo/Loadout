@@ -1,13 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
   <!-- Loadout — square app mark. Black & white, flat vector.
-       An abstract "E"/stack: a vertical stem with three rounded bars,
-       reading as a loaded stack of modules. Clean geometric forms,
-       strong negative space, rounded squircle tile. -->
+       L+T monogram: a vertical stem with a T-crossbar on top and an L-foot
+       below, built from thick rounded bars with a subtle forward lean for
+       motion. All gothic / serif / cross / sparkle detailing removed. -->
   <rect width="200" height="200" rx="46" fill="#0A0A0B"/>
-  <g fill="#FFFFFF">
-    <rect x="50" y="50"  width="22"  height="100" rx="11"/>
-    <rect x="50" y="50"  width="100" height="22"  rx="11"/>
-    <rect x="50" y="89"  width="74"  height="22"  rx="11"/>
-    <rect x="50" y="128" width="96"  height="22"  rx="11"/>
+  <g fill="#FFFFFF" transform="translate(11,0) skewX(-6)">
+    <rect x="86" y="50"  width="28" height="100" rx="14"/>
+    <rect x="62" y="50"  width="76" height="28"  rx="14"/>
+    <rect x="86" y="122" width="66" height="28"  rx="14"/>
   </g>
 </svg>

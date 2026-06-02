@@ -1,10 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <!-- Loadout — glyph only, no tile (transparent). Recolour via the fill.
-       Default solid black for placement on light surfaces / wordmark lockups. -->
-  <g fill="#0A0A0B">
-    <rect x="50" y="50"  width="22"  height="100" rx="11"/>
-    <rect x="50" y="50"  width="100" height="22"  rx="11"/>
-    <rect x="50" y="89"  width="74"  height="22"  rx="11"/>
-    <rect x="50" y="128" width="96"  height="22"  rx="11"/>
+  <!-- Loadout — L+T glyph only, no tile (transparent). Recolour via the fill. -->
+  <g fill="#0A0A0B" transform="translate(11,0) skewX(-6)">
+    <rect x="86" y="50"  width="28" height="100" rx="14"/>
+    <rect x="62" y="50"  width="76" height="28"  rx="14"/>
+    <rect x="86" y="122" width="66" height="28"  rx="14"/>
   </g>
 </svg>
