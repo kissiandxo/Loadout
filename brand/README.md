@@ -8,9 +8,20 @@ All brand assets live here. They're hand-built as SVG / HTML so they're vector, 
 |---|---|
 | `loadout-logo.svg` | Primary wordmark on dark backgrounds — 720×200 |
 | `loadout-logo-light.svg` | Wordmark on light backgrounds — same dimensions |
-| `loadout-mark.svg` | Square mark (200×200) — for favicons, social avatars, app icons |
+| `loadout-mark.svg` | Square app mark (200×200) — favicons, social avatars, app icons |
+| `loadout-mark-light.svg` | Square mark, inverted (dark glyph on white tile) |
+| `loadout-mark-glyph.svg` | Glyph only, transparent — recolour via `fill` |
 
-**To export PNG:** Open the SVG in a browser, screenshot at the size you need. Or use an SVG-to-PNG converter (online or `npx svg2png`).
+The square mark is **black & white, flat vector** — a clean geometric "E"/stack
+in a rounded squircle tile. It scales sharply from a 1024px app icon down to a
+20px favicon. Three alternate directions (incl. an "L" monogram) and a live
+comparison live in [`mark-explorations/`](./mark-explorations/) — promote any of
+them to primary by following that folder's README.
+
+**To export PNG:** `loadout-mark.png` (512), `loadout-mark-1024.png` and
+`loadout-mark-light.png` are committed. To regenerate, open the SVG in a browser
+and screenshot, or render with [`@resvg/resvg-js`](https://github.com/yisibl/resvg-js)
+(see `mark-explorations/README.md` for the one-liner).
 
 **Brand colours:**
 - Background: `#0A0A0B`

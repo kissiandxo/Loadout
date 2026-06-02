@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Loadout.ai — mark explorations</title>
+<style>
+  :root{ --black:#0A0A0B; --white:#FFFFFF; --ink:#0A0A0B; --muted:#6B7280; --line:#E4E4E7; --bg:#F4F4F5 }
+  *{ box-sizing:border-box }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:'Inter','Helvetica Neue',Arial,sans-serif; -webkit-font-smoothing:antialiased }
+  header{ padding:48px 32px 8px; text-align:center }
+  h1{ margin:0; font-weight:800; letter-spacing:-.5px; font-size:30px }
+  header p{ margin:8px 0 0; color:var(--muted); font-size:15px }
+  .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:24px; max-width:1100px; margin:32px auto; padding:0 24px }
+  .card{ background:#fff; border:1px solid var(--line); border-radius:20px; padding:28px 20px; text-align:center }
+  .card.pick{ border-color:var(--black); box-shadow:0 6px 30px rgba(0,0,0,.08) }
+  .tiles{ display:flex; align-items:flex-end; justify-content:center; gap:18px; margin-bottom:18px }
+  .tile{ display:inline-flex; align-items:center; justify-content:center }
+  .name{ font-weight:800; font-size:19px; margin:4px 0 2px }
+  .desc{ color:var(--muted); font-size:13.5px; min-height:34px }
+  .badge{ display:inline-block; margin-top:10px; background:var(--black); color:#fff; font-size:11px;
+          font-weight:700; letter-spacing:1px; padding:6px 12px; border-radius:999px }
+  .favrow{ display:flex; align-items:center; justify-content:center; gap:10px; margin-top:14px; color:var(--muted); font-size:11px }
+  .lockup{ display:flex; align-items:center; justify-content:center; gap:16px; margin:8px auto 56px;
+           background:#fff; border:1px solid var(--line); border-radius:20px; padding:26px; max-width:520px }
+  .lockup .word{ font-weight:800; font-size:40px; letter-spacing:-1.5px }
+  .section{ text-align:center; color:var(--muted); font-size:13px; letter-spacing:1px; text-transform:uppercase; margin:8px 0 4px }
+  /* shared squircle tiles */
+  .sq{ border-radius:23%; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Loadout.ai — app-mark explorations</h1>
+  <p>Black &amp; white · flat vector · rounded squircle · scales cleanly to favicon size</p>
+</header>
+
+<div class="grid">
+  <!-- ============ OPTION 1: STACK / E (recommended) ============ -->
+  <div class="card pick">
+    <div class="tiles">
+      <span class="tile"><svg width="120" height="120" viewBox="0 0 200 200" class="sq"><rect width="200" height="200" rx="46" fill="#0A0A0B"/><g fill="#fff"><rect x="50" y="50" width="22" height="100" rx="11"/><rect x="50" y="50" width="100" height="22" rx="11"/><rect x="50" y="89" width="74" height="22" rx="11"/><rect x="50" y="128" width="96" height="22" rx="11"/></g></svg></span>
+      <span class="tile"><svg width="56" height="56" viewBox="0 0 200 200"><rect width="200" height="200" rx="46" fill="#fff" stroke="#D4D4D8" stroke-width="2"/><g fill="#0A0A0B"><rect x="50" y="50" width="22" height="100" rx="11"/><rect x="50" y="50" width="100" height="22" rx="11"/><rect x="50" y="89" width="74" height="22" rx="11"/><rect x="50" y="128" width="96" height="22" rx="11"/></g></svg></span>
+    </div>
+    <div class="name">Stack · E</div>
+    <div class="desc">Faithful transform of your uploaded symbol — a vertical stem with three rounded bars.</div>
+    <div class="favrow">
+      <svg width="32" height="32" viewBox="0 0 200 200"><rect width="200" height="200" rx="46" fill="#0A0A0B"/><g fill="#fff"><rect x="50" y="50" width="22" height="100" rx="11"/><rect x="50" y="50" width="100" height="22" rx="11"/><rect x="50" y="89" width="74" height="22" rx="11"/><rect x="50" y="128" width="96" height="22" rx="11"/></g></svg>
+      <svg width="20" height="20" viewBox="0 0 200 200"><rect width="200" height="200" rx="46" fill="#0A0A0B"/><g fill="#fff"><rect x="50" y="50" width="22" height="100" rx="11"/><rect x="50" y="50" width="100" height="22" rx="11"/><rect x="50" y="89" width="74" height="22" rx="11"/><rect x="50" y="128" width="96" height="22" rx="11"/></g></svg>
+      <span>32 · 20px</span>
+    </div>
+    <span class="badge">RECOMMENDED</span>
+  </div>
+
+  <!-- ============ OPTION 2: CLEAN L ============ -->
+  <div class="card">
+    <div class="tiles">
+      <span class="tile"><svg width="120" height="120" viewBox="0 0 200 200" class="sq"><rect width="200" height="200" rx="46" fill="#0A0A0B"/><g fill="#fff"><rect x="62" y="46" width="24" height="102" rx="12"/><rect x="62" y="124" width="86" height="24" rx="12"/></g></svg></span>
+      <span class="tile"><svg width="56" height="56" viewBox="0 0 200 200"><rect width="200" height="200" rx="46" fill="#fff" stroke="#D4D4D8" stroke-width="2"/><g fill="#0A0A0B"><rect x="62" y="46" width="24" height="102" rx="12"/><rect x="62" y="124" width="86" height="24" rx="12"/></g></svg></span>
+    </div>
+    <div class="name">Clean · L</div>
+    <div class="desc">Premium geometric monogram. Leans into the “Loadout” name; matches the existing brand mark.</div>
+    <div class="favrow">
+      <svg width="32" height="32" viewBox="0 0 200 200"><rect width="200" height="200" rx="46" fill="#0A0A0B"/><g fill="#fff"><rect x="62" y="46" width="24" height="102" rx="12"/><rect x="62" y="124" width="86" height="24" rx="12"/></g></svg>
+      <svg width="20" height="20" viewBox="0 0 200 200"><rect width="200" height="200" rx="46" fill="#0A0A0B"/><g fill="#fff"><rect x="62" y="46" width="24" height="102" rx="12"/><rect x="62" y="124" width="86" height="24" rx="12"/></g></svg>
+      <span>32 · 20px</span>
+    </div>
+  </div>
+
+  <!-- ============ OPTION 3: BRACKET / Lo ============ -->
+  <div class="card">
+    <div class="tiles">
+      <span class="tile"><svg width="120" height="120" viewBox="0 0 200 200" class="sq"><rect width="200" height="200" rx="46" fill="#0A0A0B"/><g fill="#fff"><rect x="54" y="54" width="20" height="96" rx="10"/><rect x="54" y="130" width="86" height="20" rx="10"/><rect x="90" y="80" width="44" height="44" rx="13"/></g></svg></span>
+      <span class="tile"><svg width="56" height="56" viewBox="0 0 200 200"><rect width="200" height="200" rx="46" fill="#fff" stroke="#D4D4D8" stroke-width="2"/><g fill="#0A0A0B"><rect x="54" y="54" width="20" height="96" rx="10"/><rect x="54" y="130" width="86" height="20" rx="10"/><rect x="90" y="80" width="44" height="44" rx="13"/></g></svg></span>
+    </div>
+    <div class="name">Bracket · Lo</div>
+    <div class="desc">An L-bracket cradling a loaded module — a literal “loadout slot,” also reads as “Lo”.</div>
+    <div class="favrow">
+      <svg width="32" height="32" viewBox="0 0 200 200"><rect width="200" height="200" rx="46" fill="#0A0A0B"/><g fill="#fff"><rect x="54" y="54" width="20" height="96" rx="10"/><rect x="54" y="130" width="86" height="20" rx="10"/><rect x="90" y="80" width="44" height="44" rx="13"/></g></svg>
+      <svg width="20" height="20" viewBox="0 0 200 200"><rect width="200" height="200" rx="46" fill="#0A0A0B"/><g fill="#fff"><rect x="54" y="54" width="20" height="96" rx="10"/><rect x="54" y="130" width="86" height="20" rx="10"/><rect x="90" y="80" width="44" height="44" rx="13"/></g></svg>
+      <span>32 · 20px</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">Wordmark lockup (recommended mark)</div>
+<div class="lockup">
+  <svg width="64" height="64" viewBox="0 0 200 200" class="sq"><rect width="200" height="200" rx="46" fill="#0A0A0B"/><g fill="#fff"><rect x="50" y="50" width="22" height="100" rx="11"/><rect x="50" y="50" width="100" height="22" rx="11"/><rect x="50" y="89" width="74" height="22" rx="11"/><rect x="50" y="128" width="96" height="22" rx="11"/></g></svg>
+  <span class="word">Loadout<span style="color:#6B7280">.ai</span></span>
+</div>
+
+</body>
+</html>

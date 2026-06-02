@@ -1,10 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <!-- Loadout — square app mark. Black & white, flat vector.
-       An abstract "E"/stack: a vertical stem with three rounded bars,
-       reading as a loaded stack of modules. Clean geometric forms,
-       strong negative space, rounded squircle tile. -->
-  <rect width="200" height="200" rx="46" fill="#0A0A0B"/>
-  <g fill="#FFFFFF">
+  <!-- Loadout — square app mark, light variant (dark glyph on white tile). -->
+  <rect width="200" height="200" rx="46" fill="#FFFFFF"/>
+  <g fill="#0A0A0B">
     <rect x="50" y="50"  width="22"  height="100" rx="11"/>
     <rect x="50" y="50"  width="100" height="22"  rx="11"/>
     <rect x="50" y="89"  width="74"  height="22"  rx="11"/>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Option 3 — "Loaded bracket": an L-bracket cradling a rounded module.
+       Literal nod to a "loadout" — gear loaded into a slot (also reads "Lo"). -->
+  <rect width="200" height="200" rx="46" fill="#0A0A0B"/>
+  <g fill="#FFFFFF">
+    <rect x="54" y="54"  width="20" height="96" rx="10"/>
+    <rect x="54" y="130" width="86" height="20" rx="10"/>
+    <rect x="90" y="80"  width="44" height="44" rx="13"/>
+  </g>
+</svg>
